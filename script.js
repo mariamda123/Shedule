@@ -1,5 +1,7 @@
 (() => {
   const STORAGE_KEY = "academic-management-db";
+  const CREDITS_PER_BLOCK = 2;
+  const MINUTES_PER_BLOCK = 45;
 
   const defaultDB = {
     role: "Coordinador",
@@ -8,28 +10,32 @@
     categories: [],
     teachers: [],
     subjects: [],
+    shifts: [],
   };
 
   const createId = (prefix) => `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
 
-  const storageGateway = {
+  const createLocalStorageDataSource = (key, seed) => ({
     read() {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (!raw) return structuredClone(defaultDB);
+      const raw = localStorage.getItem(key);
+      if (!raw) return structuredClone(seed);
       try {
-        return { ...structuredClone(defaultDB), ...JSON.parse(raw) };
+        return { ...structuredClone(seed), ...JSON.parse(raw) };
       } catch {
-        return structuredClone(defaultDB);
+        return structuredClone(seed);
       }
     },
     write(data) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+      localStorage.setItem(key, JSON.stringify(data));
     },
-  };
+  });
+
+  // Este gateway permite reemplazar localStorage por una API real más adelante.
+  const dataSource = createLocalStorageDataSource(STORAGE_KEY, defaultDB);
 
   const dbRepository = {
-    getDB: () => storageGateway.read(),
-    saveDB: (db) => storageGateway.write(db),
+    getDB: () => dataSource.read(),
+    saveDB: (db) => dataSource.write(db),
     insert(collection, entity) {
       const db = this.getDB();
       db[collection].push(entity);
@@ -61,6 +67,16 @@
         ...payload,
       });
     },
+    createShift(type, blocks) {
+      const parsedBlocks = Number(blocks);
+      return dbRepository.insert("shifts", {
+        id: createId("shift"),
+        type,
+        blocks: parsedBlocks,
+        credits: parsedBlocks * CREDITS_PER_BLOCK,
+        minutes: parsedBlocks * MINUTES_PER_BLOCK,
+      });
+    },
     getAll() {
       return dbRepository.getDB();
     },
@@ -76,12 +92,14 @@
     categoryForm: document.querySelector("#category-form"),
     teacherForm: document.querySelector("#teacher-form"),
     subjectForm: document.querySelector("#subject-form"),
+    shiftForm: document.querySelector("#shift-form"),
 
     coordinationList: document.querySelector("#coordination-list"),
     careerList: document.querySelector("#career-list"),
     categoryList: document.querySelector("#category-list"),
     teacherList: document.querySelector("#teacher-list"),
     subjectList: document.querySelector("#subject-list"),
+    shiftList: document.querySelector("#shift-list"),
 
     careerCoordinationSelect: document.querySelector("#career-coordination"),
     subjectCareerSelect: document.querySelector("#subject-career"),
@@ -126,7 +144,7 @@
   };
 
   const render = () => {
-    const { coordinations, careers, categories, teachers, subjects } = state.data;
+    const { coordinations, careers, categories, teachers, subjects, shifts } = state.data;
 
     renderList(ui.coordinationList, coordinations, (item) => item.name);
     renderList(ui.careerList, careers, (item) => {
@@ -144,6 +162,11 @@
         .join(", ");
 
       return `${item.name} (${item.code}) · ${item.credits} créditos · ${category?.name ?? "Sin categoría"} · ${career?.name ?? "Sin carrera"} · Maestros: ${teacherNames || "N/A"}`;
+    });
+
+    renderList(ui.shiftList, shifts, (item) => {
+      const shiftName = item.type === "diurno" ? "Diurno" : "Sabatino";
+      return `${shiftName} · ${item.blocks} bloque(s) · ${item.credits} créditos · ${item.minutes} minutos`;
     });
 
     renderSelectOptions(ui.careerCoordinationSelect, coordinations, "Selecciona una coordinación");
@@ -221,6 +244,15 @@
         categoryId: form.categoryId.value,
         teacherIds: selectedTeacherIds,
       });
+    })
+  );
+
+  ui.shiftForm.addEventListener(
+    "submit",
+    withRender((event) => {
+      const form = event.target;
+      if (!form.type.value || !form.blocks.value || Number(form.blocks.value) < 1) return;
+      academicService.createShift(form.type.value, form.blocks.value);
     })
   );
 
