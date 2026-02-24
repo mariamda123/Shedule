@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Gestión Académica</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="app-header">
+      <h1>Plataforma de Gestión Académica</h1>
+      <p>Rol activo: <strong>Coordinador</strong></p>
+    </header>
+
+    <main>
+      <nav class="tabs" aria-label="Navegación principal">
+        <button class="tab-button active" data-tab="principal" type="button">Principal</button>
+        <button class="tab-button" data-tab="configuracion" type="button">Configuración</button>
+      </nav>
+
+      <section id="principal" class="tab-panel active" aria-labelledby="principal">
+        <h2>Pantalla principal</h2>
+        <div class="blank-state" aria-live="polite"></div>
+      </section>
+
+      <section id="configuracion" class="tab-panel" aria-labelledby="configuracion">
+        <h2>Configuración académica</h2>
+
+        <div class="grid-layout">
+          <article class="card">
+            <h3>Coordinaciones</h3>
+            <form id="coordination-form" class="stack">
+              <label for="coordination-name">Nombre</label>
+              <input id="coordination-name" name="name" type="text" required />
+              <button type="submit">Agregar coordinación</button>
+            </form>
+            <ul id="coordination-list" class="list"></ul>
+          </article>
+
+          <article class="card">
+            <h3>Carreras</h3>
+            <form id="career-form" class="stack">
+              <label for="career-name">Nombre</label>
+              <input id="career-name" name="name" type="text" required />
+
+              <label for="career-coordination">Coordinación</label>
+              <select id="career-coordination" name="coordinationId" required></select>
+
+              <button type="submit">Agregar carrera</button>
+            </form>
+            <ul id="career-list" class="list"></ul>
+          </article>
+
+          <article class="card">
+            <h3>Categorías</h3>
+            <form id="category-form" class="stack">
+              <label for="category-name">Nombre</label>
+              <input id="category-name" name="name" type="text" required />
+              <button type="submit">Agregar categoría</button>
+            </form>
+            <ul id="category-list" class="list"></ul>
+          </article>
+
+          <article class="card">
+            <h3>Maestros</h3>
+            <form id="teacher-form" class="stack">
+              <label for="teacher-name">Nombre</label>
+              <input id="teacher-name" name="name" type="text" required />
+              <button type="submit">Agregar maestro</button>
+            </form>
+            <ul id="teacher-list" class="list"></ul>
+          </article>
+        </div>
+
+        <article class="card subject-card">
+          <h3>Materias (Pensum por carrera)</h3>
+          <form id="subject-form" class="stack">
+            <label for="subject-name">Nombre de la materia</label>
+            <input id="subject-name" name="name" type="text" required />
+
+            <label for="subject-code">Código</label>
+            <input id="subject-code" name="code" type="text" required />
+
+            <label for="subject-credits">Créditos</label>
+            <input id="subject-credits" name="credits" type="number" min="1" required />
+
+            <label for="subject-career">Carrera</label>
+            <select id="subject-career" name="careerId" required></select>
+
+            <label for="subject-category">Categoría</label>
+            <select id="subject-category" name="categoryId" required></select>
+
+            <label for="subject-teachers">Maestros</label>
+            <select id="subject-teachers" name="teacherIds" multiple required></select>
+            <small>Usa Ctrl/Cmd para seleccionar varios maestros.</small>
+
+            <button type="submit">Agregar materia</button>
+          </form>
+          <ul id="subject-list" class="list"></ul>
+        </article>
+      </section>
+    </main>
+
+    <template id="list-item-template">
+      <li class="list-item"></li>
+    </template>
+
+    <script src="script.js"></script>
+  </body>
+</html>

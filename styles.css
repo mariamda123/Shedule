@@ -1,0 +1,134 @@
+:root {
+  --bg: #f5f7fb;
+  --card: #ffffff;
+  --text: #1f2937;
+  --muted: #6b7280;
+  --primary: #2563eb;
+  --primary-hover: #1d4ed8;
+  --border: #d1d5db;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+  background-color: var(--bg);
+  color: var(--text);
+}
+
+.app-header {
+  background-color: var(--card);
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid var(--border);
+}
+
+main {
+  padding: 1rem 1.5rem 2rem;
+}
+
+.tabs {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.tab-button {
+  border: 1px solid var(--border);
+  background-color: var(--card);
+  color: var(--text);
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  cursor: pointer;
+}
+
+.tab-button.active {
+  background-color: var(--primary);
+  color: white;
+  border-color: var(--primary);
+}
+
+.tab-panel {
+  display: none;
+}
+
+.tab-panel.active {
+  display: block;
+}
+
+.blank-state {
+  min-height: 240px;
+  border-radius: 0.75rem;
+  border: 1px dashed var(--border);
+  background: linear-gradient(135deg, #f8fafc, #eef2ff);
+}
+
+.grid-layout {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1rem;
+}
+
+.card {
+  background-color: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 0.75rem;
+  padding: 1rem;
+}
+
+.subject-card {
+  margin-top: 1rem;
+}
+
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+input,
+select,
+button {
+  font: inherit;
+}
+
+input,
+select {
+  border: 1px solid var(--border);
+  border-radius: 0.4rem;
+  padding: 0.45rem 0.5rem;
+}
+
+button[type="submit"] {
+  margin-top: 0.3rem;
+  background-color: var(--primary);
+  border: none;
+  color: #fff;
+  border-radius: 0.4rem;
+  padding: 0.55rem 0.75rem;
+  cursor: pointer;
+}
+
+button[type="submit"]:hover {
+  background-color: var(--primary-hover);
+}
+
+.list {
+  margin: 0.9rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.list-item {
+  border: 1px solid var(--border);
+  border-radius: 0.45rem;
+  padding: 0.5rem;
+  margin-bottom: 0.4rem;
+  background-color: #fcfdff;
+}
+
+small {
+  color: var(--muted);
+}
