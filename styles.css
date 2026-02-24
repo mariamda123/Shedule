@@ -132,3 +132,12 @@ button[type="submit"]:hover {
 small {
   color: var(--muted);
 }
+
+.shift-card {
+  margin-top: 1rem;
+}
+
+.help-text {
+  color: var(--muted);
+  margin-top: 0;
+}

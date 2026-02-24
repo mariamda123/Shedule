@@ -72,6 +72,29 @@
           </article>
         </div>
 
+
+
+        <article class="card shift-card">
+          <h3>Turnos por bloques</h3>
+          <p class="help-text">
+            Cada bloque asigna <strong>2 créditos</strong>, equivalentes a <strong>45 minutos</strong>.
+          </p>
+          <form id="shift-form" class="stack">
+            <label for="shift-type">Turno</label>
+            <select id="shift-type" name="type" required>
+              <option value="" selected disabled>Selecciona un turno</option>
+              <option value="diurno">Diurno</option>
+              <option value="sabatino">Sabatino</option>
+            </select>
+
+            <label for="shift-blocks">Cantidad de bloques</label>
+            <input id="shift-blocks" name="blocks" type="number" min="1" required />
+
+            <button type="submit">Agregar turno</button>
+          </form>
+          <ul id="shift-list" class="list"></ul>
+        </article>
+
         <article class="card subject-card">
           <h3>Materias (Pensum por carrera)</h3>
           <form id="subject-form" class="stack">
