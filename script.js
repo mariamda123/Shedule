@@ -1,7 +1,5 @@
 (() => {
   const STORAGE_KEY = "academic-management-db";
-  const CREDITS_PER_BLOCK = 2;
-  const MINUTES_PER_BLOCK = 45;
 
   const defaultDB = {
     role: "Coordinador",
@@ -9,9 +7,11 @@
     careers: [],
     categories: [],
     teachers: [],
-    subjects: [],
     shifts: [],
+    csvUploads: [],
   };
+
+  const weekDays = ["lunes", "martes", "miércoles", "jueves", "viernes", "sábado"];
 
   const createId = (prefix) => `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
 
@@ -30,7 +30,6 @@
     },
   });
 
-  // Este gateway permite reemplazar localStorage por una API real más adelante.
   const dataSource = createLocalStorageDataSource(STORAGE_KEY, defaultDB);
 
   const dbRepository = {
@@ -42,6 +41,46 @@
       this.saveDB(db);
       return entity;
     },
+  };
+
+  const parseTimeToMinutes = (time) => {
+    if (!time) return null;
+    const [hours, minutes] = time.split(":").map(Number);
+    return hours * 60 + minutes;
+  };
+
+  const minutesToTime = (totalMinutes) => {
+    const hours = String(Math.floor(totalMinutes / 60)).padStart(2, "0");
+    const minutes = String(totalMinutes % 60).padStart(2, "0");
+    return `${hours}:${minutes}`;
+  };
+
+  const isAlignedToBlocks = (minuteMark, shiftStart, blockMinutes) =>
+    (minuteMark - shiftStart) % blockMinutes === 0;
+
+  const validatePeriod = ({ label, start, end, shiftStart, shiftEnd, blockMinutes }) => {
+    if (!start && !end) return { ok: true };
+    if (!start || !end) return { ok: false, error: `Debe completar inicio y fin para ${label}.` };
+
+    const startMinutes = parseTimeToMinutes(start);
+    const endMinutes = parseTimeToMinutes(end);
+
+    if (startMinutes >= endMinutes) {
+      return { ok: false, error: `${label} debe tener una hora fin mayor a la hora inicio.` };
+    }
+
+    if (startMinutes < shiftStart || endMinutes > shiftEnd) {
+      return { ok: false, error: `${label} debe estar dentro del rango total del turno.` };
+    }
+
+    if (!isAlignedToBlocks(startMinutes, shiftStart, blockMinutes) || !isAlignedToBlocks(endMinutes, shiftStart, blockMinutes)) {
+      return { ok: false, error: `${label} debe iniciar y terminar en límites exactos de bloque.` };
+    }
+
+    return {
+      ok: true,
+      period: { start, end, startMinutes, endMinutes },
+    };
   };
 
   const academicService = {
@@ -61,21 +100,55 @@
     createTeacher(name) {
       return dbRepository.insert("teachers", { id: createId("teacher"), name: name.trim() });
     },
-    createSubject(payload) {
-      return dbRepository.insert("subjects", {
-        id: createId("subject"),
-        ...payload,
+    createCsvUpload(fileName) {
+      return dbRepository.insert("csvUploads", {
+        id: createId("csv"),
+        fileName,
+        uploadedAt: new Date().toISOString(),
       });
     },
-    createShift(type, blocks) {
-      const parsedBlocks = Number(blocks);
-      return dbRepository.insert("shifts", {
-        id: createId("shift"),
-        type,
-        blocks: parsedBlocks,
-        credits: parsedBlocks * CREDITS_PER_BLOCK,
-        minutes: parsedBlocks * MINUTES_PER_BLOCK,
+    createShift(payload) {
+      const blockMinutes = Number(payload.minutesPerBlock);
+      const blockCount = Number(payload.blocks);
+      const shiftStart = parseTimeToMinutes(payload.startTime);
+      const shiftEnd = shiftStart + blockMinutes * blockCount;
+
+      const recessValidation = validatePeriod({
+        label: "Receso",
+        start: payload.recessStart,
+        end: payload.recessEnd,
+        shiftStart,
+        shiftEnd,
+        blockMinutes,
       });
+      if (!recessValidation.ok) return recessValidation;
+
+      const lunchValidation = validatePeriod({
+        label: "Almuerzo",
+        start: payload.lunchStart,
+        end: payload.lunchEnd,
+        shiftStart,
+        shiftEnd,
+        blockMinutes,
+      });
+      if (!lunchValidation.ok) return lunchValidation;
+
+      if (recessValidation.period && lunchValidation.period) {
+        const overlap =
+          recessValidation.period.startMinutes < lunchValidation.period.endMinutes &&
+          lunchValidation.period.startMinutes < recessValidation.period.endMinutes;
+        if (overlap) {
+          return { ok: false, error: "Receso y almuerzo no pueden solaparse entre sí." };
+        }
+      }
+
+      const shift = dbRepository.insert("shifts", {
+        id: createId("shift"),
+        ...payload,
+        endTime: minutesToTime(shiftEnd),
+      });
+
+      return { ok: true, shift };
     },
     getAll() {
       return dbRepository.getDB();
@@ -87,24 +160,22 @@
   };
 
   const ui = {
+    csvForm: document.querySelector("#csv-form"),
     coordinationForm: document.querySelector("#coordination-form"),
     careerForm: document.querySelector("#career-form"),
     categoryForm: document.querySelector("#category-form"),
     teacherForm: document.querySelector("#teacher-form"),
-    subjectForm: document.querySelector("#subject-form"),
     shiftForm: document.querySelector("#shift-form"),
 
+    csvList: document.querySelector("#csv-list"),
     coordinationList: document.querySelector("#coordination-list"),
     careerList: document.querySelector("#career-list"),
     categoryList: document.querySelector("#category-list"),
     teacherList: document.querySelector("#teacher-list"),
-    subjectList: document.querySelector("#subject-list"),
     shiftList: document.querySelector("#shift-list"),
+    shiftError: document.querySelector("#shift-error"),
 
     careerCoordinationSelect: document.querySelector("#career-coordination"),
-    subjectCareerSelect: document.querySelector("#subject-career"),
-    subjectCategorySelect: document.querySelector("#subject-category"),
-    subjectTeachersSelect: document.querySelector("#subject-teachers"),
 
     listItemTemplate: document.querySelector("#list-item-template"),
     tabs: [...document.querySelectorAll(".tab-button")],
@@ -123,13 +194,6 @@
     });
   };
 
-  const renderMultiSelectOptions = (select, items) => {
-    select.innerHTML = "";
-    items.forEach((item) => {
-      select.append(new Option(item.name, item.id));
-    });
-  };
-
   const renderList = (listElement, entries, formatter) => {
     listElement.innerHTML = "";
     entries.forEach((entry) => {
@@ -144,8 +208,9 @@
   };
 
   const render = () => {
-    const { coordinations, careers, categories, teachers, subjects, shifts } = state.data;
+    const { coordinations, careers, categories, teachers, shifts, csvUploads } = state.data;
 
+    renderList(ui.csvList, csvUploads, (item) => `${item.fileName} · ${new Date(item.uploadedAt).toLocaleString("es-NI")}`);
     renderList(ui.coordinationList, coordinations, (item) => item.name);
     renderList(ui.careerList, careers, (item) => {
       const coordination = coordinations.find((coord) => coord.id === item.coordinationId);
@@ -153,26 +218,18 @@
     });
     renderList(ui.categoryList, categories, (item) => item.name);
     renderList(ui.teacherList, teachers, (item) => item.name);
-    renderList(ui.subjectList, subjects, (item) => {
-      const career = careers.find((row) => row.id === item.careerId);
-      const category = categories.find((row) => row.id === item.categoryId);
-      const teacherNames = item.teacherIds
-        .map((id) => teachers.find((teacher) => teacher.id === id)?.name)
-        .filter(Boolean)
-        .join(", ");
-
-      return `${item.name} (${item.code}) · ${item.credits} créditos · ${category?.name ?? "Sin categoría"} · ${career?.name ?? "Sin carrera"} · Maestros: ${teacherNames || "N/A"}`;
-    });
 
     renderList(ui.shiftList, shifts, (item) => {
-      const shiftName = item.type === "diurno" ? "Diurno" : "Sabatino";
-      return `${shiftName} · ${item.blocks} bloque(s) · ${item.credits} créditos · ${item.minutes} minutos`;
+      const dayLine = item.days
+        .map((day) => `${day}(${item.priorities[day]})`)
+        .join(", ");
+      const breaks = item.recessStart && item.recessEnd ? ` · Receso ${item.recessStart}-${item.recessEnd}` : "";
+      const lunch = item.lunchStart && item.lunchEnd ? ` · Almuerzo ${item.lunchStart}-${item.lunchEnd}` : "";
+
+      return `${item.name} · ${dayLine} · ${item.blocks} bloques de ${item.minutesPerBlock} min (${item.creditsPerBlock} créditos por bloque) · ${item.startTime}-${item.endTime}${breaks}${lunch}`;
     });
 
     renderSelectOptions(ui.careerCoordinationSelect, coordinations, "Selecciona una coordinación");
-    renderSelectOptions(ui.subjectCareerSelect, careers, "Selecciona una carrera");
-    renderSelectOptions(ui.subjectCategorySelect, categories, "Selecciona una categoría");
-    renderMultiSelectOptions(ui.subjectTeachersSelect, teachers);
   };
 
   const withRender = (handler) => (event) => {
@@ -182,6 +239,15 @@
     render();
     event.target.reset();
   };
+
+  ui.csvForm.addEventListener(
+    "submit",
+    withRender((event) => {
+      const file = event.target.classCsv.files?.[0];
+      if (!file) return;
+      academicService.createCsvUpload(file.name);
+    })
+  );
 
   ui.coordinationForm.addEventListener(
     "submit",
@@ -219,42 +285,61 @@
     })
   );
 
-  ui.subjectForm.addEventListener(
-    "submit",
-    withRender((event) => {
-      const form = event.target;
-      const selectedTeacherIds = [...form.teacherIds.selectedOptions].map((opt) => opt.value);
+  ui.shiftForm.addEventListener("submit", (event) => {
+    event.preventDefault();
+    const form = event.target;
+    ui.shiftError.textContent = "";
 
-      if (
-        !form.name.value.trim() ||
-        !form.code.value.trim() ||
-        !form.credits.value ||
-        !form.careerId.value ||
-        !form.categoryId.value ||
-        selectedTeacherIds.length === 0
-      ) {
-        return;
-      }
+    const days = [...form.querySelectorAll('input[name="days"]:checked')].map((checkbox) => checkbox.value);
+    if (!form.name.value.trim() || days.length === 0) {
+      ui.shiftError.textContent = "Debe indicar un nombre de turno y seleccionar al menos un día.";
+      return;
+    }
 
-      academicService.createSubject({
-        name: form.name.value.trim(),
-        code: form.code.value.trim().toUpperCase(),
-        credits: Number(form.credits.value),
-        careerId: form.careerId.value,
-        categoryId: form.categoryId.value,
-        teacherIds: selectedTeacherIds,
-      });
-    })
-  );
+    const priorities = days.reduce((acc, day) => {
+      const value = Number(form[`priority-${day}`].value || 0);
+      acc[day] = value;
+      return acc;
+    }, {});
 
-  ui.shiftForm.addEventListener(
-    "submit",
-    withRender((event) => {
-      const form = event.target;
-      if (!form.type.value || !form.blocks.value || Number(form.blocks.value) < 1) return;
-      academicService.createShift(form.type.value, form.blocks.value);
-    })
-  );
+    const hasPriority = Object.values(priorities).some((value) => value > 0);
+    if (!hasPriority) {
+      ui.shiftError.textContent = "Asigne prioridad mayor a 0 al menos en uno de los días seleccionados.";
+      return;
+    }
+
+    const minutesPerBlock = Number(form.minutesPerBlock.value);
+    const creditsPerBlock = Number(form.creditsPerBlock.value);
+    const blocks = Number(form.blocks.value);
+
+    if (minutesPerBlock < 15 || creditsPerBlock < 1 || blocks < 1 || !form.startTime.value) {
+      ui.shiftError.textContent = "Completa correctamente créditos, minutos, bloques y hora de inicio.";
+      return;
+    }
+
+    const response = academicService.createShift({
+      name: form.name.value.trim(),
+      days,
+      priorities,
+      creditsPerBlock,
+      minutesPerBlock,
+      blocks,
+      startTime: form.startTime.value,
+      recessStart: form.recessStart.value,
+      recessEnd: form.recessEnd.value,
+      lunchStart: form.lunchStart.value,
+      lunchEnd: form.lunchEnd.value,
+    });
+
+    if (!response.ok) {
+      ui.shiftError.textContent = response.error;
+      return;
+    }
+
+    refreshState();
+    render();
+    form.reset();
+  });
 
   ui.tabs.forEach((button) => {
     button.addEventListener("click", () => {
