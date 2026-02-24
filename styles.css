@@ -6,6 +6,7 @@
   --primary: #2563eb;
   --primary-hover: #1d4ed8;
   --border: #d1d5db;
+  --danger: #b91c1c;
 }
 
 * {
@@ -58,13 +59,6 @@ main {
   display: block;
 }
 
-.blank-state {
-  min-height: 240px;
-  border-radius: 0.75rem;
-  border: 1px dashed var(--border);
-  background: linear-gradient(135deg, #f8fafc, #eef2ff);
-}
-
 .grid-layout {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
@@ -76,10 +70,6 @@ main {
   border: 1px solid var(--border);
   border-radius: 0.75rem;
   padding: 1rem;
-}
-
-.subject-card {
-  margin-top: 1rem;
 }
 
 .stack {
@@ -129,10 +119,6 @@ button[type="submit"]:hover {
   background-color: #fcfdff;
 }
 
-small {
-  color: var(--muted);
-}
-
 .shift-card {
   margin-top: 1rem;
 }
@@ -140,4 +126,24 @@ small {
 .help-text {
   color: var(--muted);
   margin-top: 0;
+}
+
+.day-priority-grid {
+  border: 1px solid var(--border);
+  border-radius: 0.45rem;
+  padding: 0.65rem;
+  display: grid;
+  grid-template-columns: 1fr 90px;
+  gap: 0.45rem;
+}
+
+.day-priority-grid legend {
+  font-weight: bold;
+  padding: 0 0.2rem;
+}
+
+.error-text {
+  color: var(--danger);
+  min-height: 1.2rem;
+  margin: 0.6rem 0 0;
 }
