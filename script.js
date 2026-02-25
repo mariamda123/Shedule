@@ -1,354 +1,500 @@
 (() => {
-  const STORAGE_KEY = "academic-management-db";
+  const STORAGE_KEY = "scheduler-db-v2";
+  const DAYS = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
+  const EXPECTED_HEADERS = ["Carrera", "Materia", "Codigo", "Dia", "HoraInicio", "HoraFin", "Aula"];
 
   const defaultDB = {
-    role: "Coordinador",
     coordinations: [],
     careers: [],
-    categories: [],
-    teachers: [],
-    shifts: [],
-    csvUploads: [],
+    subjects: [],
+    classes: [],
   };
-
-  const weekDays = ["lunes", "martes", "miércoles", "jueves", "viernes", "sábado"];
 
   const createId = (prefix) => `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
+  const parseTime = (t) => {
+    const [h, m] = String(t || "").split(":").map(Number);
+    if (Number.isNaN(h) || Number.isNaN(m)) return null;
+    return h * 60 + m;
+  };
+  const fmt = (m) => `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
 
-  const createLocalStorageDataSource = (key, seed) => ({
+  const repo = {
     read() {
-      const raw = localStorage.getItem(key);
-      if (!raw) return structuredClone(seed);
       try {
-        return { ...structuredClone(seed), ...JSON.parse(raw) };
+        const raw = localStorage.getItem(STORAGE_KEY);
+        return raw ? { ...structuredClone(defaultDB), ...JSON.parse(raw) } : structuredClone(defaultDB);
       } catch {
-        return structuredClone(seed);
+        return structuredClone(defaultDB);
       }
     },
-    write(data) {
-      localStorage.setItem(key, JSON.stringify(data));
-    },
-  });
-
-  const dataSource = createLocalStorageDataSource(STORAGE_KEY, defaultDB);
-
-  const dbRepository = {
-    getDB: () => dataSource.read(),
-    saveDB: (db) => dataSource.write(db),
-    insert(collection, entity) {
-      const db = this.getDB();
-      db[collection].push(entity);
-      this.saveDB(db);
-      return entity;
+    write(db) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(db));
     },
   };
 
-  const parseTimeToMinutes = (time) => {
-    if (!time) return null;
-    const [hours, minutes] = time.split(":").map(Number);
-    return hours * 60 + minutes;
-  };
-
-  const minutesToTime = (totalMinutes) => {
-    const hours = String(Math.floor(totalMinutes / 60)).padStart(2, "0");
-    const minutes = String(totalMinutes % 60).padStart(2, "0");
-    return `${hours}:${minutes}`;
-  };
-
-  const isAlignedToBlocks = (minuteMark, shiftStart, blockMinutes) =>
-    (minuteMark - shiftStart) % blockMinutes === 0;
-
-  const validatePeriod = ({ label, start, end, shiftStart, shiftEnd, blockMinutes }) => {
-    if (!start && !end) return { ok: true };
-    if (!start || !end) return { ok: false, error: `Debe completar inicio y fin para ${label}.` };
-
-    const startMinutes = parseTimeToMinutes(start);
-    const endMinutes = parseTimeToMinutes(end);
-
-    if (startMinutes >= endMinutes) {
-      return { ok: false, error: `${label} debe tener una hora fin mayor a la hora inicio.` };
-    }
-
-    if (startMinutes < shiftStart || endMinutes > shiftEnd) {
-      return { ok: false, error: `${label} debe estar dentro del rango total del turno.` };
-    }
-
-    if (!isAlignedToBlocks(startMinutes, shiftStart, blockMinutes) || !isAlignedToBlocks(endMinutes, shiftStart, blockMinutes)) {
-      return { ok: false, error: `${label} debe iniciar y terminar en límites exactos de bloque.` };
-    }
-
-    return {
-      ok: true,
-      period: { start, end, startMinutes, endMinutes },
-    };
-  };
-
-  const academicService = {
-    createCoordination(name) {
-      return dbRepository.insert("coordinations", { id: createId("coord"), name: name.trim() });
-    },
-    createCareer(name, coordinationId) {
-      return dbRepository.insert("careers", {
-        id: createId("career"),
-        name: name.trim(),
-        coordinationId,
-      });
-    },
-    createCategory(name) {
-      return dbRepository.insert("categories", { id: createId("category"), name: name.trim() });
-    },
-    createTeacher(name) {
-      return dbRepository.insert("teachers", { id: createId("teacher"), name: name.trim() });
-    },
-    createCsvUpload(fileName) {
-      return dbRepository.insert("csvUploads", {
-        id: createId("csv"),
-        fileName,
-        uploadedAt: new Date().toISOString(),
-      });
-    },
-    createShift(payload) {
-      const blockMinutes = Number(payload.minutesPerBlock);
-      const blockCount = Number(payload.blocks);
-      const shiftStart = parseTimeToMinutes(payload.startTime);
-      const shiftEnd = shiftStart + blockMinutes * blockCount;
-
-      const recessValidation = validatePeriod({
-        label: "Receso",
-        start: payload.recessStart,
-        end: payload.recessEnd,
-        shiftStart,
-        shiftEnd,
-        blockMinutes,
-      });
-      if (!recessValidation.ok) return recessValidation;
-
-      const lunchValidation = validatePeriod({
-        label: "Almuerzo",
-        start: payload.lunchStart,
-        end: payload.lunchEnd,
-        shiftStart,
-        shiftEnd,
-        blockMinutes,
-      });
-      if (!lunchValidation.ok) return lunchValidation;
-
-      if (recessValidation.period && lunchValidation.period) {
-        const overlap =
-          recessValidation.period.startMinutes < lunchValidation.period.endMinutes &&
-          lunchValidation.period.startMinutes < recessValidation.period.endMinutes;
-        if (overlap) {
-          return { ok: false, error: "Receso y almuerzo no pueden solaparse entre sí." };
-        }
-      }
-
-      const shift = dbRepository.insert("shifts", {
-        id: createId("shift"),
-        ...payload,
-        endTime: minutesToTime(shiftEnd),
-      });
-
-      return { ok: true, shift };
-    },
-    getAll() {
-      return dbRepository.getDB();
-    },
-  };
-
-  const state = {
-    data: academicService.getAll(),
-  };
+  let db = repo.read();
 
   const ui = {
     csvForm: document.querySelector("#csv-form"),
+    csvFile: document.querySelector("#csv-file"),
+    csvMessage: document.querySelector("#csv-message"),
+    csvErrors: document.querySelector("#csv-errors"),
+
     coordinationForm: document.querySelector("#coordination-form"),
-    careerForm: document.querySelector("#career-form"),
-    categoryForm: document.querySelector("#category-form"),
-    teacherForm: document.querySelector("#teacher-form"),
-    shiftForm: document.querySelector("#shift-form"),
-
-    csvList: document.querySelector("#csv-list"),
     coordinationList: document.querySelector("#coordination-list"),
+
+    careerForm: document.querySelector("#career-form"),
     careerList: document.querySelector("#career-list"),
-    categoryList: document.querySelector("#category-list"),
-    teacherList: document.querySelector("#teacher-list"),
-    shiftList: document.querySelector("#shift-list"),
-    shiftError: document.querySelector("#shift-error"),
+    careerCoordination: document.querySelector("#career-coordination"),
 
-    careerCoordinationSelect: document.querySelector("#career-coordination"),
+    subjectForm: document.querySelector("#subject-form"),
+    subjectList: document.querySelector("#subject-list"),
+    subjectCareer: document.querySelector("#subject-career"),
 
-    listItemTemplate: document.querySelector("#list-item-template"),
-    tabs: [...document.querySelectorAll(".tab-button")],
-    tabPanels: [...document.querySelectorAll(".tab-panel")],
+    classForm: document.querySelector("#class-form"),
+    classList: document.querySelector("#class-list"),
+    classCareer: document.querySelector("#class-career"),
+    classMessage: document.querySelector("#class-message"),
+
+    hierarchyView: document.querySelector("#hierarchy-view"),
+
+    scheduleCareer: document.querySelector("#schedule-career"),
+    scheduleContainer: document.querySelector("#schedule-container"),
+    scheduleAlert: document.querySelector("#schedule-alert"),
   };
 
-  const renderSelectOptions = (select, items, placeholder, valueKey = "id", labelKey = "name") => {
-    select.innerHTML = "";
-    const defaultOpt = new Option(placeholder, "");
-    defaultOpt.disabled = true;
-    defaultOpt.selected = true;
-    select.append(defaultOpt);
+  const save = () => {
+    repo.write(db);
+    render();
+  };
 
-    items.forEach((item) => {
-      select.append(new Option(item[labelKey], item[valueKey]));
+  const overlaps = (aStart, aEnd, bStart, bEnd) => aStart < bEnd && bStart < aEnd;
+
+  const findConflict = (newClass, ignoreId = null) => {
+    const ns = parseTime(newClass.HoraInicio);
+    const ne = parseTime(newClass.HoraFin);
+    return db.classes.find((c) => {
+      if (ignoreId && c.id === ignoreId) return false;
+      if (c.Carrera !== newClass.Carrera || c.Dia !== newClass.Dia) return false;
+      return overlaps(ns, ne, parseTime(c.HoraInicio), parseTime(c.HoraFin));
     });
   };
 
-  const renderList = (listElement, entries, formatter) => {
-    listElement.innerHTML = "";
-    entries.forEach((entry) => {
-      const node = ui.listItemTemplate.content.firstElementChild.cloneNode(true);
-      node.textContent = formatter(entry);
-      listElement.append(node);
+  const validateClass = (item) => {
+    if (!EXPECTED_HEADERS.every((k) => item[k])) return "Fila con columnas vacías.";
+    if (!DAYS.includes(item.Dia)) return `Día inválido: ${item.Dia}.`;
+    const start = parseTime(item.HoraInicio);
+    const end = parseTime(item.HoraFin);
+    if (start === null || end === null) return "Hora inválida (use HH:MM).";
+    if (start >= end) return "HoraInicio debe ser menor que HoraFin.";
+    return null;
+  };
+
+  const parseCsv = (text) => {
+    const lines = text.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+    if (!lines.length) return { rows: [], errors: ["CSV vacío."] };
+
+    const headers = lines[0].split(",").map((h) => h.trim());
+    if (headers.join("|") !== EXPECTED_HEADERS.join("|")) {
+      return {
+        rows: [],
+        errors: [`Encabezado inválido. Esperado: ${EXPECTED_HEADERS.join(",")}`],
+      };
+    }
+
+    const errors = [];
+    const rows = [];
+
+    for (let i = 1; i < lines.length; i += 1) {
+      const cols = lines[i].split(",").map((c) => c.trim());
+      if (cols.length !== EXPECTED_HEADERS.length) {
+        errors.push(`Línea ${i + 1}: número de columnas inválido.`);
+        continue;
+      }
+      const row = Object.fromEntries(EXPECTED_HEADERS.map((k, idx) => [k, cols[idx]]));
+      const e = validateClass(row);
+      if (e) {
+        errors.push(`Línea ${i + 1}: ${e}`);
+        continue;
+      }
+      rows.push(row);
+    }
+
+    return { rows, errors };
+  };
+
+  const setMessage = (el, msg, isError = false) => {
+    el.textContent = msg;
+    el.classList.toggle("error", isError);
+  };
+
+  const toOptions = (items, labelFn) => items.map((x) => `<option value="${x.id}">${labelFn(x)}</option>`).join("");
+
+  const renderActions = (onEdit, onDelete) => {
+    const wrap = document.createElement("div");
+    wrap.className = "actions";
+    const edit = document.createElement("button");
+    edit.type = "button";
+    edit.textContent = "Editar";
+    edit.addEventListener("click", onEdit);
+    const del = document.createElement("button");
+    del.type = "button";
+    del.className = "danger";
+    del.textContent = "Eliminar";
+    del.addEventListener("click", onDelete);
+    wrap.append(edit, del);
+    return wrap;
+  };
+
+  const renderLists = () => {
+    ui.coordinationList.innerHTML = "";
+    db.coordinations.forEach((c) => {
+      const li = document.createElement("li");
+      li.innerHTML = `<span>${c.name}</span>`;
+      li.append(
+        renderActions(
+          () => {
+            const name = prompt("Editar coordinación", c.name);
+            if (!name?.trim()) return;
+            c.name = name.trim();
+            save();
+          },
+          () => {
+            db.careers = db.careers.filter((r) => r.coordinationId !== c.id);
+            db.subjects = db.subjects.filter((s) => db.careers.some((r) => r.id === s.careerId));
+            db.coordinations = db.coordinations.filter((x) => x.id !== c.id);
+            save();
+          }
+        )
+      );
+      ui.coordinationList.append(li);
+    });
+
+    ui.careerList.innerHTML = "";
+    db.careers.forEach((c) => {
+      const coord = db.coordinations.find((x) => x.id === c.coordinationId)?.name || "Sin coordinación";
+      const li = document.createElement("li");
+      li.innerHTML = `<span>${c.name} · ${coord}</span>`;
+      li.append(
+        renderActions(
+          () => {
+            const name = prompt("Editar carrera", c.name);
+            if (!name?.trim()) return;
+            const oldName = c.name;
+            c.name = name.trim();
+            db.classes = db.classes.map((cl) => (cl.Carrera === oldName ? { ...cl, Carrera: c.name } : cl));
+            save();
+          },
+          () => {
+            db.subjects = db.subjects.filter((s) => s.careerId !== c.id);
+            db.classes = db.classes.filter((cl) => cl.Carrera !== c.name);
+            db.careers = db.careers.filter((x) => x.id !== c.id);
+            save();
+          }
+        )
+      );
+      ui.careerList.append(li);
+    });
+
+    ui.subjectList.innerHTML = "";
+    db.subjects.forEach((s) => {
+      const career = db.careers.find((x) => x.id === s.careerId)?.name || "Sin carrera";
+      const li = document.createElement("li");
+      li.innerHTML = `<span>${s.name} (${s.code}) · ${career}</span>`;
+      li.append(
+        renderActions(
+          () => {
+            const name = prompt("Editar materia", s.name);
+            if (!name?.trim()) return;
+            const code = prompt("Editar código", s.code);
+            if (!code?.trim()) return;
+            db.classes = db.classes.map((cl) =>
+              cl.Carrera === career && cl.Codigo === s.code ? { ...cl, Materia: name.trim(), Codigo: code.trim() } : cl
+            );
+            s.name = name.trim();
+            s.code = code.trim();
+            save();
+          },
+          () => {
+            db.classes = db.classes.filter((cl) => cl.Codigo !== s.code || cl.Carrera !== career);
+            db.subjects = db.subjects.filter((x) => x.id !== s.id);
+            save();
+          }
+        )
+      );
+      ui.subjectList.append(li);
+    });
+
+    ui.classList.innerHTML = "";
+    db.classes.forEach((c) => {
+      const li = document.createElement("li");
+      li.innerHTML = `<span>${c.Carrera} · ${c.Materia} (${c.Codigo}) · ${c.Dia} ${c.HoraInicio}-${c.HoraFin} · Aula ${c.Aula}</span>`;
+      li.append(
+        renderActions(
+          () => {
+            const aula = prompt("Editar aula", c.Aula);
+            if (!aula?.trim()) return;
+            const editable = { ...c, Aula: aula.trim() };
+            const conflict = findConflict(editable, c.id);
+            if (conflict) {
+              alert(`Conflicto con ${conflict.Materia} (${conflict.HoraInicio}-${conflict.HoraFin}).`);
+              return;
+            }
+            c.Aula = aula.trim();
+            save();
+          },
+          () => {
+            db.classes = db.classes.filter((x) => x.id !== c.id);
+            save();
+          }
+        )
+      );
+      ui.classList.append(li);
     });
   };
 
-  const refreshState = () => {
-    state.data = academicService.getAll();
+  const renderSelectors = () => {
+    const coordOptions = db.coordinations.length
+      ? `<option value="">Seleccione coordinación</option>${toOptions(db.coordinations, (x) => x.name)}`
+      : '<option value="">Sin coordinaciones</option>';
+    ui.careerCoordination.innerHTML = coordOptions;
+
+    const careerOptions = db.careers.length
+      ? `<option value="">Seleccione carrera</option>${toOptions(db.careers, (x) => x.name)}`
+      : '<option value="">Sin carreras</option>';
+
+    ui.subjectCareer.innerHTML = careerOptions;
+    ui.classCareer.innerHTML = careerOptions;
+    ui.scheduleCareer.innerHTML = careerOptions;
+  };
+
+  const renderHierarchy = () => {
+    if (!db.coordinations.length) {
+      ui.hierarchyView.innerHTML = '<p class="muted">Sin datos todavía.</p>';
+      return;
+    }
+
+    const root = document.createElement("div");
+    root.className = "tree";
+
+    db.coordinations.forEach((coord) => {
+      const cnode = document.createElement("ul");
+      const citem = document.createElement("li");
+      citem.textContent = `Coordinación: ${coord.name}`;
+      const careerList = document.createElement("ul");
+
+      db.careers
+        .filter((ca) => ca.coordinationId === coord.id)
+        .forEach((career) => {
+          const careerItem = document.createElement("li");
+          careerItem.textContent = `Carrera: ${career.name}`;
+          const subjectList = document.createElement("ul");
+
+          db.subjects
+            .filter((s) => s.careerId === career.id)
+            .forEach((s) => {
+              const subjectItem = document.createElement("li");
+              subjectItem.textContent = `Materia: ${s.name} (${s.code})`;
+              const classList = document.createElement("ul");
+
+              db.classes
+                .filter((cl) => cl.Carrera === career.name && cl.Codigo === s.code)
+                .forEach((cl) => {
+                  const classItem = document.createElement("li");
+                  classItem.textContent = `Clase: ${cl.Dia} ${cl.HoraInicio}-${cl.HoraFin} · Aula ${cl.Aula}`;
+                  classList.append(classItem);
+                });
+
+              subjectItem.append(classList);
+              subjectList.append(subjectItem);
+            });
+
+          careerItem.append(subjectList);
+          careerList.append(careerItem);
+        });
+
+      citem.append(careerList);
+      cnode.append(citem);
+      root.append(cnode);
+    });
+
+    ui.hierarchyView.innerHTML = "";
+    ui.hierarchyView.append(root);
+  };
+
+  const renderSchedule = () => {
+    const careerName = ui.scheduleCareer.value;
+    const classes = db.classes.filter((c) => c.Carrera === careerName);
+
+    if (!careerName) {
+      ui.scheduleContainer.innerHTML = '<p class="muted">Seleccione una carrera para ver el horario.</p>';
+      ui.scheduleAlert.textContent = "";
+      return;
+    }
+
+    if (!classes.length) {
+      ui.scheduleContainer.innerHTML = '<p class="muted">No hay clases para esta carrera.</p>';
+      ui.scheduleAlert.textContent = "";
+      return;
+    }
+
+    const points = [...new Set(classes.flatMap((c) => [parseTime(c.HoraInicio), parseTime(c.HoraFin)]))].sort((a, b) => a - b);
+    const ranges = points.slice(0, -1).map((p, idx) => [p, points[idx + 1]]);
+
+    let conflictMsg = "";
+    for (let i = 0; i < classes.length; i += 1) {
+      for (let j = i + 1; j < classes.length; j += 1) {
+        const a = classes[i];
+        const b = classes[j];
+        if (a.Dia === b.Dia && overlaps(parseTime(a.HoraInicio), parseTime(a.HoraFin), parseTime(b.HoraInicio), parseTime(b.HoraFin))) {
+          conflictMsg = `Conflicto detectado: ${a.Materia} y ${b.Materia} el ${a.Dia}.`;
+          break;
+        }
+      }
+      if (conflictMsg) break;
+    }
+
+    setMessage(ui.scheduleAlert, conflictMsg, Boolean(conflictMsg));
+
+    let html = '<table class="schedule"><thead><tr><th>Horario</th>';
+    DAYS.forEach((d) => {
+      html += `<th>${d}</th>`;
+    });
+    html += "</tr></thead><tbody>";
+
+    ranges.forEach(([start, end]) => {
+      html += `<tr><td class="time">${fmt(start)}-${fmt(end)}</td>`;
+      DAYS.forEach((day) => {
+        const found = classes.find((c) => c.Dia === day && parseTime(c.HoraInicio) <= start && parseTime(c.HoraFin) >= end);
+        html += `<td>${found ? `<div class="class-cell"><strong>${found.Materia}</strong><small>Aula ${found.Aula}</small></div>` : ""}</td>`;
+      });
+      html += "</tr>";
+    });
+
+    html += "</tbody></table>";
+    ui.scheduleContainer.innerHTML = html;
   };
 
   const render = () => {
-    const { coordinations, careers, categories, teachers, shifts, csvUploads } = state.data;
-
-    renderList(ui.csvList, csvUploads, (item) => `${item.fileName} · ${new Date(item.uploadedAt).toLocaleString("es-NI")}`);
-    renderList(ui.coordinationList, coordinations, (item) => item.name);
-    renderList(ui.careerList, careers, (item) => {
-      const coordination = coordinations.find((coord) => coord.id === item.coordinationId);
-      return `${item.name} · ${coordination?.name ?? "Sin coordinación"}`;
-    });
-    renderList(ui.categoryList, categories, (item) => item.name);
-    renderList(ui.teacherList, teachers, (item) => item.name);
-
-    renderList(ui.shiftList, shifts, (item) => {
-      const dayLine = item.days
-        .map((day) => `${day}(${item.priorities[day]})`)
-        .join(", ");
-      const breaks = item.recessStart && item.recessEnd ? ` · Receso ${item.recessStart}-${item.recessEnd}` : "";
-      const lunch = item.lunchStart && item.lunchEnd ? ` · Almuerzo ${item.lunchStart}-${item.lunchEnd}` : "";
-
-      return `${item.name} · ${dayLine} · ${item.blocks} bloques de ${item.minutesPerBlock} min (${item.creditsPerBlock} créditos por bloque) · ${item.startTime}-${item.endTime}${breaks}${lunch}`;
-    });
-
-    renderSelectOptions(ui.careerCoordinationSelect, coordinations, "Selecciona una coordinación");
+    renderSelectors();
+    renderLists();
+    renderHierarchy();
+    renderSchedule();
   };
 
-  const withRender = (handler) => (event) => {
-    event.preventDefault();
-    handler(event);
-    refreshState();
-    render();
-    event.target.reset();
-  };
-
-  ui.csvForm.addEventListener(
-    "submit",
-    withRender((event) => {
-      const file = event.target.classCsv.files?.[0];
-      if (!file) return;
-      academicService.createCsvUpload(file.name);
-    })
-  );
-
-  ui.coordinationForm.addEventListener(
-    "submit",
-    withRender((event) => {
-      const name = event.target.name.value;
-      if (!name.trim()) return;
-      academicService.createCoordination(name);
-    })
-  );
-
-  ui.careerForm.addEventListener(
-    "submit",
-    withRender((event) => {
-      const { name, coordinationId } = event.target;
-      if (!name.value.trim() || !coordinationId.value) return;
-      academicService.createCareer(name.value, coordinationId.value);
-    })
-  );
-
-  ui.categoryForm.addEventListener(
-    "submit",
-    withRender((event) => {
-      const name = event.target.name.value;
-      if (!name.trim()) return;
-      academicService.createCategory(name);
-    })
-  );
-
-  ui.teacherForm.addEventListener(
-    "submit",
-    withRender((event) => {
-      const name = event.target.name.value;
-      if (!name.trim()) return;
-      academicService.createTeacher(name);
-    })
-  );
-
-  ui.shiftForm.addEventListener("submit", (event) => {
-    event.preventDefault();
-    const form = event.target;
-    ui.shiftError.textContent = "";
-
-    const days = [...form.querySelectorAll('input[name="days"]:checked')].map((checkbox) => checkbox.value);
-    if (!form.name.value.trim() || days.length === 0) {
-      ui.shiftError.textContent = "Debe indicar un nombre de turno y seleccionar al menos un día.";
-      return;
-    }
-
-    const priorities = days.reduce((acc, day) => {
-      const value = Number(form[`priority-${day}`].value || 0);
-      acc[day] = value;
-      return acc;
-    }, {});
-
-    const hasPriority = Object.values(priorities).some((value) => value > 0);
-    if (!hasPriority) {
-      ui.shiftError.textContent = "Asigne prioridad mayor a 0 al menos en uno de los días seleccionados.";
-      return;
-    }
-
-    const minutesPerBlock = Number(form.minutesPerBlock.value);
-    const creditsPerBlock = Number(form.creditsPerBlock.value);
-    const blocks = Number(form.blocks.value);
-
-    if (minutesPerBlock < 15 || creditsPerBlock < 1 || blocks < 1 || !form.startTime.value) {
-      ui.shiftError.textContent = "Completa correctamente créditos, minutos, bloques y hora de inicio.";
-      return;
-    }
-
-    const response = academicService.createShift({
-      name: form.name.value.trim(),
-      days,
-      priorities,
-      creditsPerBlock,
-      minutesPerBlock,
-      blocks,
-      startTime: form.startTime.value,
-      recessStart: form.recessStart.value,
-      recessEnd: form.recessEnd.value,
-      lunchStart: form.lunchStart.value,
-      lunchEnd: form.lunchEnd.value,
-    });
-
-    if (!response.ok) {
-      ui.shiftError.textContent = response.error;
-      return;
-    }
-
-    refreshState();
-    render();
-    form.reset();
+  ui.coordinationForm.addEventListener("submit", (e) => {
+    e.preventDefault();
+    const name = e.target.name.value.trim();
+    if (!name) return;
+    db.coordinations.push({ id: createId("coord"), name });
+    e.target.reset();
+    save();
   });
 
-  ui.tabs.forEach((button) => {
-    button.addEventListener("click", () => {
-      ui.tabs.forEach((tab) => tab.classList.remove("active"));
-      ui.tabPanels.forEach((panel) => panel.classList.remove("active"));
-      button.classList.add("active");
-      document.querySelector(`#${button.dataset.tab}`)?.classList.add("active");
-    });
+  ui.careerForm.addEventListener("submit", (e) => {
+    e.preventDefault();
+    const name = e.target.name.value.trim();
+    const coordinationId = e.target.coordinationId.value;
+    if (!name || !coordinationId) return;
+    db.careers.push({ id: createId("career"), name, coordinationId });
+    e.target.reset();
+    save();
   });
+
+  ui.subjectForm.addEventListener("submit", (e) => {
+    e.preventDefault();
+    const name = e.target.name.value.trim();
+    const code = e.target.code.value.trim();
+    const careerId = e.target.careerId.value;
+    if (!name || !code || !careerId) return;
+    db.subjects.push({ id: createId("subject"), name, code, careerId });
+    e.target.reset();
+    save();
+  });
+
+  ui.classForm.addEventListener("submit", (e) => {
+    e.preventDefault();
+    const careerId = e.target.career.value;
+    const career = db.careers.find((x) => x.id === careerId)?.name;
+    const item = {
+      id: createId("class"),
+      Carrera: career || "",
+      Materia: e.target.materia.value.trim(),
+      Codigo: e.target.codigo.value.trim(),
+      Dia: e.target.dia.value,
+      HoraInicio: e.target.horaInicio.value,
+      HoraFin: e.target.horaFin.value,
+      Aula: e.target.aula.value.trim(),
+    };
+
+    const error = validateClass(item);
+    if (error) {
+      setMessage(ui.classMessage, error, true);
+      return;
+    }
+
+    const conflict = findConflict(item);
+    if (conflict) {
+      setMessage(ui.classMessage, `Conflicto: ${conflict.Materia} ya ocupa ${conflict.Dia} ${conflict.HoraInicio}-${conflict.HoraFin}.`, true);
+      return;
+    }
+
+    db.classes.push(item);
+    setMessage(ui.classMessage, "Clase agregada correctamente.");
+    e.target.reset();
+    save();
+  });
+
+  ui.csvForm.addEventListener("submit", (e) => {
+    e.preventDefault();
+    const file = ui.csvFile.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const text = String(reader.result || "");
+      const { rows, errors } = parseCsv(text);
+
+      const conflictErrors = [];
+      const staged = [];
+
+      rows.forEach((row, idx) => {
+        const candidate = { ...row, id: createId(`csv-${idx}`) };
+        const againstDb = findConflict(candidate);
+        const againstBatch = staged.find((s) => s.Carrera === candidate.Carrera && s.Dia === candidate.Dia
+          && overlaps(parseTime(s.HoraInicio), parseTime(s.HoraFin), parseTime(candidate.HoraInicio), parseTime(candidate.HoraFin)));
+
+        if (againstDb || againstBatch) {
+          conflictErrors.push(`Conflicto en CSV (${candidate.Carrera} ${candidate.Dia} ${candidate.HoraInicio}-${candidate.HoraFin}).`);
+          return;
+        }
+        staged.push(candidate);
+      });
+
+      const allErrors = [...errors, ...conflictErrors];
+      ui.csvErrors.innerHTML = "";
+
+      if (allErrors.length) {
+        allErrors.forEach((err) => {
+          const li = document.createElement("li");
+          li.textContent = err;
+          ui.csvErrors.append(li);
+        });
+        setMessage(ui.csvMessage, "No se insertó el CSV por errores de formato/conflicto.", true);
+        return;
+      }
+
+      db.classes.push(...staged);
+      setMessage(ui.csvMessage, `CSV procesado correctamente. ${staged.length} clases insertadas.`);
+      save();
+      e.target.reset();
+    };
+
+    reader.onerror = () => setMessage(ui.csvMessage, "No se pudo leer el archivo CSV.", true);
+    reader.readAsText(file, "utf-8");
+  });
+
+  ui.scheduleCareer.addEventListener("change", renderSchedule);
 
   render();
 })();

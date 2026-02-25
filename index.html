@@ -3,151 +3,95 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Gestión Académica</title>
+    <title>Gestor de Horarios</title>
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
     <header class="app-header">
-      <h1>Plataforma de Gestión Académica</h1>
-      <p>Rol activo: <strong>Coordinador</strong></p>
+      <h1>Gestor Académico de Horarios</h1>
+      <p>Coordinación → Carrera → Materias → Clases → Horario</p>
     </header>
 
-    <main>
-      <nav class="tabs" aria-label="Navegación principal">
-        <button class="tab-button active" data-tab="principal" type="button">Principal</button>
-        <button class="tab-button" data-tab="configuracion" type="button">Configuración</button>
-      </nav>
-
-      <section id="principal" class="tab-panel active" aria-labelledby="principal">
-        <h2>Pantalla principal</h2>
-        <article class="card">
-          <h3>Carga de clases por CSV</h3>
-          <p class="help-text">
-            Adjunta un archivo CSV con los campos: <strong>clase, año, créditos, categorías, compartido</strong>.
-          </p>
-          <form id="csv-form" class="stack">
-            <label for="class-csv">Archivo CSV</label>
-            <input id="class-csv" name="classCsv" type="file" accept=".csv" required />
-            <button type="submit">Adjuntar CSV</button>
-          </form>
-          <ul id="csv-list" class="list"></ul>
-        </article>
+    <main class="layout">
+      <section class="card">
+        <h2>1) Carga de clases por CSV</h2>
+        <p class="muted">Formato esperado: <strong>Carrera,Materia,Codigo,Dia,HoraInicio,HoraFin,Aula</strong></p>
+        <form id="csv-form" class="stack">
+          <input id="csv-file" type="file" accept=".csv" required />
+          <button type="submit">Cargar CSV</button>
+        </form>
+        <p id="csv-message" class="message"></p>
+        <ul id="csv-errors" class="list errors"></ul>
       </section>
 
-      <section id="configuracion" class="tab-panel" aria-labelledby="configuracion">
-        <h2>Configuración académica</h2>
-
-        <div class="grid-layout">
-          <article class="card">
-            <h3>Coordinaciones</h3>
-            <form id="coordination-form" class="stack">
-              <label for="coordination-name">Nombre</label>
-              <input id="coordination-name" name="name" type="text" required />
-              <button type="submit">Agregar coordinación</button>
+      <section class="grid">
+        <article class="card">
+          <h2>2) Entidades</h2>
+          <div class="stack">
+            <h3>Coordinación</h3>
+            <form id="coordination-form" class="inline-form">
+              <input name="name" placeholder="Nombre coordinación" required />
+              <button type="submit">Agregar</button>
             </form>
             <ul id="coordination-list" class="list"></ul>
-          </article>
 
-          <article class="card">
-            <h3>Carreras</h3>
-            <form id="career-form" class="stack">
-              <label for="career-name">Nombre</label>
-              <input id="career-name" name="name" type="text" required />
-
-              <label for="career-coordination">Coordinación</label>
-              <select id="career-coordination" name="coordinationId" required></select>
-
-              <button type="submit">Agregar carrera</button>
+            <h3>Carrera</h3>
+            <form id="career-form" class="inline-form">
+              <input name="name" placeholder="Nombre carrera" required />
+              <select name="coordinationId" id="career-coordination" required></select>
+              <button type="submit">Agregar</button>
             </form>
             <ul id="career-list" class="list"></ul>
-          </article>
 
-          <article class="card">
-            <h3>Categorías</h3>
-            <form id="category-form" class="stack">
-              <label for="category-name">Nombre</label>
-              <input id="category-name" name="name" type="text" required />
-              <button type="submit">Agregar categoría</button>
+            <h3>Materia</h3>
+            <form id="subject-form" class="inline-form">
+              <input name="name" placeholder="Nombre materia" required />
+              <input name="code" placeholder="Código" required />
+              <select name="careerId" id="subject-career" required></select>
+              <button type="submit">Agregar</button>
             </form>
-            <ul id="category-list" class="list"></ul>
-          </article>
+            <ul id="subject-list" class="list"></ul>
 
-          <article class="card">
-            <h3>Maestros</h3>
-            <form id="teacher-form" class="stack">
-              <label for="teacher-name">Nombre</label>
-              <input id="teacher-name" name="name" type="text" required />
-              <button type="submit">Agregar maestro</button>
+            <h3>Clase manual</h3>
+            <form id="class-form" class="inline-form class-grid">
+              <select name="career" id="class-career" required></select>
+              <input name="materia" placeholder="Materia" required />
+              <input name="codigo" placeholder="Código" required />
+              <select name="dia" required>
+                <option value="">Día</option>
+                <option>Lunes</option>
+                <option>Martes</option>
+                <option>Miércoles</option>
+                <option>Jueves</option>
+                <option>Viernes</option>
+                <option>Sábado</option>
+              </select>
+              <input name="horaInicio" type="time" required />
+              <input name="horaFin" type="time" required />
+              <input name="aula" placeholder="Aula" required />
+              <button type="submit">Agregar</button>
             </form>
-            <ul id="teacher-list" class="list"></ul>
-          </article>
-        </div>
+            <p id="class-message" class="message"></p>
+            <ul id="class-list" class="list"></ul>
+          </div>
+        </article>
 
-        <article class="card shift-card">
-          <h3>Turnos por bloques</h3>
-          <p class="help-text">
-            Define nombre, días, prioridad por día, duración/créditos por bloque y periodos protegidos de receso/almuerzo.
-          </p>
-          <form id="shift-form" class="stack">
-            <label for="shift-name">Nombre del turno</label>
-            <input id="shift-name" name="name" type="text" required />
-
-            <fieldset class="day-priority-grid">
-              <legend>Días y prioridad</legend>
-              <label><input type="checkbox" name="days" value="lunes" /> Lunes</label>
-              <input name="priority-lunes" type="number" min="0" value="0" aria-label="Prioridad lunes" />
-
-              <label><input type="checkbox" name="days" value="martes" /> Martes</label>
-              <input name="priority-martes" type="number" min="0" value="0" aria-label="Prioridad martes" />
-
-              <label><input type="checkbox" name="days" value="miércoles" /> Miércoles</label>
-              <input name="priority-miércoles" type="number" min="0" value="0" aria-label="Prioridad miércoles" />
-
-              <label><input type="checkbox" name="days" value="jueves" /> Jueves</label>
-              <input name="priority-jueves" type="number" min="0" value="0" aria-label="Prioridad jueves" />
-
-              <label><input type="checkbox" name="days" value="viernes" /> Viernes</label>
-              <input name="priority-viernes" type="number" min="0" value="0" aria-label="Prioridad viernes" />
-
-              <label><input type="checkbox" name="days" value="sábado" /> Sábado</label>
-              <input name="priority-sábado" type="number" min="0" value="0" aria-label="Prioridad sábado" />
-            </fieldset>
-
-            <label for="shift-credits">Créditos por bloque</label>
-            <input id="shift-credits" name="creditsPerBlock" type="number" min="1" required />
-
-            <label for="shift-minutes">Minutos por bloque</label>
-            <input id="shift-minutes" name="minutesPerBlock" type="number" min="15" step="5" required />
-
-            <label for="shift-blocks">Cantidad de bloques</label>
-            <input id="shift-blocks" name="blocks" type="number" min="1" required />
-
-            <label for="shift-start">Hora de inicio del turno</label>
-            <input id="shift-start" name="startTime" type="time" required />
-
-            <h4>Receso</h4>
-            <label for="recess-start">Inicio</label>
-            <input id="recess-start" name="recessStart" type="time" />
-            <label for="recess-end">Fin</label>
-            <input id="recess-end" name="recessEnd" type="time" />
-
-            <h4>Almuerzo</h4>
-            <label for="lunch-start">Inicio</label>
-            <input id="lunch-start" name="lunchStart" type="time" />
-            <label for="lunch-end">Fin</label>
-            <input id="lunch-end" name="lunchEnd" type="time" />
-
-            <button type="submit">Agregar turno</button>
-          </form>
-          <p id="shift-error" class="error-text" role="alert" aria-live="assertive"></p>
-          <ul id="shift-list" class="list"></ul>
+        <article class="card">
+          <h2>3) Vista jerárquica</h2>
+          <div id="hierarchy-view"></div>
         </article>
       </section>
-    </main>
 
-    <template id="list-item-template">
-      <li class="list-item"></li>
-    </template>
+      <section class="card">
+        <h2>4) Generación automática de horario</h2>
+        <div class="inline-form">
+          <label for="schedule-career">Seleccionar carrera</label>
+          <select id="schedule-career"></select>
+        </div>
+        <p id="schedule-alert" class="message"></p>
+        <div id="schedule-container" class="table-wrap"></div>
+      </section>
+    </main>
 
     <script src="script.js"></script>
   </body>
