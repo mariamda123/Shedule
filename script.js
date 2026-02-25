@@ -232,6 +232,23 @@
     renderSelectOptions(ui.careerCoordinationSelect, coordinations, "Selecciona una coordinación");
   };
 
+
+  const activateTab = (tabId) => {
+    const targetPanel = ui.tabPanels.find((panel) => panel.id === tabId);
+    const targetTab = ui.tabs.find((tab) => tab.dataset.tab === tabId);
+    if (!targetPanel || !targetTab) return;
+
+    ui.tabs.forEach((tab) => {
+      const isActive = tab === targetTab;
+      tab.classList.toggle("active", isActive);
+      tab.setAttribute("aria-selected", String(isActive));
+    });
+
+    ui.tabPanels.forEach((panel) => {
+      panel.classList.toggle("active", panel === targetPanel);
+    });
+  };
+
   const withRender = (handler) => (event) => {
     event.preventDefault();
     handler(event);
@@ -240,7 +257,7 @@
     event.target.reset();
   };
 
-  ui.csvForm.addEventListener(
+  ui.csvForm?.addEventListener(
     "submit",
     withRender((event) => {
       const file = event.target.classCsv.files?.[0];
@@ -249,7 +266,7 @@
     })
   );
 
-  ui.coordinationForm.addEventListener(
+  ui.coordinationForm?.addEventListener(
     "submit",
     withRender((event) => {
       const name = event.target.name.value;
@@ -258,7 +275,7 @@
     })
   );
 
-  ui.careerForm.addEventListener(
+  ui.careerForm?.addEventListener(
     "submit",
     withRender((event) => {
       const { name, coordinationId } = event.target;
@@ -267,7 +284,7 @@
     })
   );
 
-  ui.categoryForm.addEventListener(
+  ui.categoryForm?.addEventListener(
     "submit",
     withRender((event) => {
       const name = event.target.name.value;
@@ -276,7 +293,7 @@
     })
   );
 
-  ui.teacherForm.addEventListener(
+  ui.teacherForm?.addEventListener(
     "submit",
     withRender((event) => {
       const name = event.target.name.value;
@@ -285,7 +302,7 @@
     })
   );
 
-  ui.shiftForm.addEventListener("submit", (event) => {
+  ui.shiftForm?.addEventListener("submit", (event) => {
     event.preventDefault();
     const form = event.target;
     ui.shiftError.textContent = "";
@@ -343,12 +360,13 @@
 
   ui.tabs.forEach((button) => {
     button.addEventListener("click", () => {
-      ui.tabs.forEach((tab) => tab.classList.remove("active"));
-      ui.tabPanels.forEach((panel) => panel.classList.remove("active"));
-      button.classList.add("active");
-      document.querySelector(`#${button.dataset.tab}`)?.classList.add("active");
+      activateTab(button.dataset.tab);
+      history.replaceState(null, "", `#${button.dataset.tab}`);
     });
   });
+
+  const initialTab = location.hash.replace("#", "");
+  if (initialTab) activateTab(initialTab);
 
   render();
 })();
