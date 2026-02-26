@@ -39,7 +39,7 @@
         <div class="grid-layout mt-1">
           <article class="card">
             <h3>Carga de clases por CSV</h3>
-            <p class="help-text">Campos esperados: <strong>clase, año, créditos, categorías, compartido</strong>.</p>
+            <p class="help-text">Campos esperados: <strong>clase, año, créditos, categorías, compartido, tipo</strong>.</p>
             <form id="csv-form" class="stack">
               <label for="class-csv">Archivo CSV</label>
               <input id="class-csv" name="classCsv" type="file" accept=".csv" required />
@@ -152,6 +152,27 @@
               <button type="submit">Agregar maestro</button>
             </form>
             <ul id="teacher-list" class="list"></ul>
+          </article>
+
+          <article class="card">
+            <h3>Aulas</h3>
+            <form id="classroom-form" class="stack">
+              <label for="classroom-name">Nombre</label>
+              <input id="classroom-name" name="name" type="text" required />
+
+              <label for="classroom-location">Ubicación</label>
+              <input id="classroom-location" name="location" type="text" required />
+
+              <label for="classroom-type">Tipo</label>
+              <select id="classroom-type" name="type" required>
+                <option value="Aula normal">Aula normal</option>
+                <option value="Laboratorios">Laboratorios</option>
+                <option value="Talleres">Talleres</option>
+              </select>
+
+              <button type="submit">Agregar aula</button>
+            </form>
+            <ul id="classroom-list" class="list"></ul>
           </article>
         </div>
 
