@@ -86,9 +86,13 @@
         <article class="card mt-1">
           <div class="card-actions">
             <h3>Horarios por año (carrera activa)</h3>
-            <button id="reset-schedule" type="button" class="danger-button">Reiniciar solo horarios</button>
+            <div class="button-row">
+              <button id="export-schedule-pdf" type="button" class="secondary-button">Exportar horario en PDF</button>
+              <button id="reset-schedule" type="button" class="danger-button">Reiniciar solo horarios</button>
+            </div>
           </div>
           <p class="help-text">Siempre se muestran 5 horarios (1° a 5° año). Si no hay clases, la tabla queda vacía.</p>
+          <p id="export-pdf-error" class="error-text" role="alert" aria-live="assertive"></p>
           <div id="active-schedules" class="schedule-stack"></div>
         </article>
 

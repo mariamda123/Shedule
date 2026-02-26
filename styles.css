@@ -29,12 +29,15 @@ input, select { border: 1px solid var(--border); border-radius: 0.4rem; padding:
 button[type="submit"], .danger-button { margin-top: 0.3rem; border: none; color: #fff; border-radius: 0.4rem; padding: 0.55rem 0.75rem; cursor: pointer; background: var(--primary); }
 button[type="submit"]:hover { background: var(--primary-hover); }
 .danger-button { background: var(--danger); }
+.secondary-button { background: #374151; border: none; color: #fff; border-radius: 0.4rem; padding: 0.55rem 0.75rem; cursor: pointer; }
+.secondary-button:hover { background: #1f2937; }
 .list { margin: 0.9rem 0 0; padding: 0; list-style: none; }
 .list-item { border: 1px solid var(--border); border-radius: 0.45rem; padding: 0.5rem; margin-bottom: 0.4rem; background: #fcfdff; }
 .shift-card { margin-top: 1rem; }
 .help-text { color: var(--muted); margin-top: 0; }
 .error-text { color: var(--danger); min-height: 1.2rem; margin: 0.6rem 0 0; }
 .card-actions { display: flex; justify-content: space-between; align-items: center; gap: 1rem; }
+.button-row { display: flex; gap: 0.5rem; flex-wrap: wrap; }
 .schedule-stack { display: flex; flex-direction: column; gap: 0.8rem; }
 .year-schedule h4 { margin: 0 0 0.35rem; }
 .schedule-table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
