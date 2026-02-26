@@ -237,7 +237,6 @@
     autoGenerateForm: document.querySelector("#auto-generate-form"),
     autoGenerateError: document.querySelector("#auto-generate-error"),
     activeSchedules: document.querySelector("#active-schedules"),
-    viewSchedules: document.querySelector("#view-schedules"),
     resetScheduleBtn: document.querySelector("#reset-schedule"),
     exportSchedulePdfBtn: document.querySelector("#export-schedule-pdf"),
     exportPdfError: document.querySelector("#export-pdf-error"),
@@ -245,9 +244,6 @@
     activeCoordination: document.querySelector("#active-coordination"),
     activeCareer: document.querySelector("#active-career"),
     activeShift: document.querySelector("#active-shift"),
-    viewCoordination: document.querySelector("#view-coordination"),
-    viewCareer: document.querySelector("#view-career"),
-    viewShift: document.querySelector("#view-shift"),
     manualClassDay: document.querySelector("#manual-class-day"),
     manualClassBlock: document.querySelector("#manual-class-block"),
     autoPeriod: document.querySelector("#auto-period"),
@@ -425,7 +421,7 @@
   };
 
   const render = () => {
-    const { coordinations, careers, categories, teachers, classrooms, shifts, periods, csvUploads, activeContext, viewContext } = state.data;
+    const { coordinations, careers, categories, teachers, classrooms, shifts, periods, csvUploads, activeContext } = state.data;
 
     renderList(ui.coordinationList, coordinations, (item) => item.name);
     renderList(ui.careerList, careers, (item) => `${item.name} · ${coordinations.find((c) => c.id === item.coordinationId)?.name ?? "Sin coordinación"}`);
@@ -446,16 +442,11 @@
 
     renderSelect(ui.careerCoordinationSelect, coordinations, "Selecciona una coordinación");
     renderSelect(ui.activeCoordination, coordinations, "Selecciona coordinación", activeContext.coordinationId);
-    renderSelect(ui.viewCoordination, coordinations, "Selecciona coordinación", viewContext.coordinationId || activeContext.coordinationId);
     renderSelect(ui.activeShift, shifts, "Selecciona turno", activeContext.shiftId);
-    renderSelect(ui.viewShift, shifts, "Selecciona turno", viewContext.shiftId || activeContext.shiftId);
     renderSelect(ui.periodShift, shifts, "Selecciona turno");
 
     const activeCareers = careers.filter((item) => !activeContext.coordinationId || item.coordinationId === activeContext.coordinationId);
-    const viewCoord = viewContext.coordinationId || activeContext.coordinationId;
-    const viewCareers = careers.filter((item) => !viewCoord || item.coordinationId === viewCoord);
     renderSelect(ui.activeCareer, activeCareers, "Selecciona carrera", activeContext.careerId);
-    renderSelect(ui.viewCareer, viewCareers, "Selecciona carrera", viewContext.careerId || activeContext.careerId);
 
     const selectedShift = shifts.find((item) => item.id === activeContext.shiftId);
     const selectedPeriodId = ui.autoPeriod.value;
@@ -480,11 +471,6 @@
     }
 
     buildScheduleTables(ui.activeSchedules, activeContext);
-    buildScheduleTables(ui.viewSchedules, {
-      coordinationId: viewContext.coordinationId || activeContext.coordinationId,
-      careerId: viewContext.careerId || activeContext.careerId,
-      shiftId: viewContext.shiftId || activeContext.shiftId,
-    });
   };
 
   const withRender = (handler) => (event) => {
@@ -704,18 +690,7 @@
     render();
   };
 
-  const updateViewContext = () => {
-    service.updateContext("viewContext", {
-      coordinationId: ui.viewCoordination.value,
-      careerId: ui.viewCareer.value,
-      shiftId: ui.viewShift.value,
-    });
-    refresh();
-    render();
-  };
-
   [ui.activeCoordination, ui.activeCareer, ui.activeShift].forEach((input) => input.addEventListener("change", updateActiveContext));
-  [ui.viewCoordination, ui.viewCareer, ui.viewShift].forEach((input) => input.addEventListener("change", updateViewContext));
 
   ui.tabs.forEach((button) => {
     button.addEventListener("click", () => {
