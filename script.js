@@ -388,9 +388,10 @@
     ui.manualClassBlock.innerHTML = "";
     ui.autoPeriod.innerHTML = "";
     ui.autoPeriod.append(new Option("Todo el cuatrimestre", ""));
-    const relevantPeriods = selectedShift
+    const periodsForSelectedShift = selectedShift
       ? periods.filter((item) => item.shiftId === selectedShift.id)
       : periods;
+    const relevantPeriods = periodsForSelectedShift.length > 0 ? periodsForSelectedShift : periods;
     relevantPeriods.forEach((period) => ui.autoPeriod.append(new Option(`${period.name} (${period.startDate} a ${period.endDate})`, period.id)));
     if (selectedPeriodId && relevantPeriods.some((period) => period.id === selectedPeriodId)) {
       ui.autoPeriod.value = selectedPeriodId;
