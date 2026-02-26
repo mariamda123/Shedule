@@ -8,6 +8,7 @@
     careers: [],
     categories: [],
     teachers: [],
+    classrooms: [],
     shifts: [],
     periods: [],
     csvUploads: [],
@@ -18,6 +19,12 @@
   };
 
   const createId = (prefix) => `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
+  const normalizeClassroomType = (value) => {
+    const raw = (value || "").trim().toLowerCase();
+    if (["laboratorio", "laboratorios"].includes(raw)) return "Laboratorios";
+    if (["taller", "talleres"].includes(raw)) return "Talleres";
+    return "Aula normal";
+  };
   const toMinuteMark = (value) => {
     if (!value) return null;
     const [h, m] = value.split(":").map(Number);
@@ -70,6 +77,11 @@
       db.teachers.push({ id: createId("teacher"), name: name.trim() });
       repository.save(db);
     },
+    createClassroom(payload) {
+      const db = repository.get();
+      db.classrooms.push({ id: createId("classroom"), ...payload, type: normalizeClassroomType(payload.type) });
+      repository.save(db);
+    },
     createShift(payload) {
       const db = repository.get();
       db.shifts.push({ id: createId("shift"), ...payload });
@@ -109,7 +121,7 @@
       if (lines.length < 2) return { ok: false, error: "El CSV no contiene datos." };
 
       const headers = lines[0].split(",").map((item) => item.trim().toLowerCase());
-      const required = ["clase", "año", "créditos", "categorías", "compartido"];
+      const required = ["clase", "año", "créditos", "categorías", "compartido", "tipo"];
       const missing = required.filter((item) => !headers.includes(item));
       if (missing.length > 0) return { ok: false, error: `Faltan columnas: ${missing.join(", ")}` };
 
@@ -123,6 +135,7 @@
           credits: Number(cells[idx["créditos"]] || 0) || 1,
           category: (cells[idx["categorías"]] || "").trim(),
           shared: (cells[idx.compartido] || "").trim(),
+          classroomType: normalizeClassroomType(cells[idx.tipo]),
           coordinationId: context.coordinationId,
           careerId: context.careerId,
         };
@@ -242,6 +255,7 @@
     careerForm: document.querySelector("#career-form"),
     categoryForm: document.querySelector("#category-form"),
     teacherForm: document.querySelector("#teacher-form"),
+    classroomForm: document.querySelector("#classroom-form"),
     shiftForm: document.querySelector("#shift-form"),
     periodForm: document.querySelector("#period-form"),
     periodError: document.querySelector("#period-error"),
@@ -250,6 +264,7 @@
     careerList: document.querySelector("#career-list"),
     categoryList: document.querySelector("#category-list"),
     teacherList: document.querySelector("#teacher-list"),
+    classroomList: document.querySelector("#classroom-list"),
     shiftList: document.querySelector("#shift-list"),
     periodList: document.querySelector("#period-list"),
     shiftError: document.querySelector("#shift-error"),
@@ -336,12 +351,13 @@
   };
 
   const render = () => {
-    const { coordinations, careers, categories, teachers, shifts, periods, csvUploads, activeContext, viewContext } = state.data;
+    const { coordinations, careers, categories, teachers, classrooms, shifts, periods, csvUploads, activeContext, viewContext } = state.data;
 
     renderList(ui.coordinationList, coordinations, (item) => item.name);
     renderList(ui.careerList, careers, (item) => `${item.name} · ${coordinations.find((c) => c.id === item.coordinationId)?.name ?? "Sin coordinación"}`);
     renderList(ui.categoryList, categories, (item) => item.name);
     renderList(ui.teacherList, teachers, (item) => item.name);
+    renderList(ui.classroomList, classrooms, (item) => `${item.name} · ${item.location} · ${item.type}`);
     renderList(ui.shiftList, shifts, (item) => `${item.name} · Días: ${item.days.join(", ")} · Prioridad: ${Object.entries(item.priorities).map(([k, v]) => `${k}:${v}`).join(", ")} · ${item.startTime}`);
 
     renderList(ui.csvList, csvUploads, (item) => `${item.fileName} · ${item.rows} clases · ${new Date(item.uploadedAt).toLocaleString("es-NI")}`);
@@ -408,6 +424,13 @@
   }));
   ui.categoryForm.addEventListener("submit", withRender((event) => service.createCategory(event.target.name.value)));
   ui.teacherForm.addEventListener("submit", withRender((event) => service.createTeacher(event.target.name.value)));
+  ui.classroomForm.addEventListener("submit", withRender((event) => {
+    service.createClassroom({
+      name: event.target.name.value.trim(),
+      location: event.target.location.value.trim(),
+      type: event.target.type.value,
+    });
+  }));
 
   ui.shiftForm.addEventListener("submit", (event) => {
     event.preventDefault();
