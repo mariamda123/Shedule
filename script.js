@@ -19,6 +19,28 @@
   };
 
   const createId = (prefix) => `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
+  const ensureArray = (value) => (Array.isArray(value) ? value : []);
+  const ensureContext = (value) => ({
+    coordinationId: typeof value?.coordinationId === "string" ? value.coordinationId : "",
+    careerId: typeof value?.careerId === "string" ? value.careerId : "",
+    shiftId: typeof value?.shiftId === "string" ? value.shiftId : "",
+  });
+  const sanitizeDb = (value) => ({
+    ...structuredClone(defaultDB),
+    ...(value && typeof value === "object" ? value : {}),
+    coordinations: ensureArray(value?.coordinations),
+    careers: ensureArray(value?.careers),
+    categories: ensureArray(value?.categories),
+    teachers: ensureArray(value?.teachers),
+    classrooms: ensureArray(value?.classrooms),
+    shifts: ensureArray(value?.shifts),
+    periods: ensureArray(value?.periods),
+    csvUploads: ensureArray(value?.csvUploads),
+    classCatalog: ensureArray(value?.classCatalog),
+    scheduleEntries: ensureArray(value?.scheduleEntries),
+    activeContext: ensureContext(value?.activeContext),
+    viewContext: ensureContext(value?.viewContext),
+  });
   const normalizeClassroomType = (value) => {
     const raw = (value || "").trim().toLowerCase();
     if (["laboratorio", "laboratorios"].includes(raw)) return "Laboratorios";
@@ -47,7 +69,7 @@
       const raw = localStorage.getItem(key);
       if (!raw) return structuredClone(seed);
       try {
-        return { ...structuredClone(seed), ...JSON.parse(raw) };
+        return sanitizeDb(JSON.parse(raw));
       } catch {
         return structuredClone(seed);
       }
