@@ -120,11 +120,25 @@
       if (lines.length < 2) return { ok: false, error: "El CSV no contiene datos." };
 
       const headers = lines[0].split(",").map((item) => item.trim().toLowerCase());
-      const required = ["clase", "año", "créditos", "categorías", "compartido", "tipo"];
-      const missing = required.filter((item) => !headers.includes(item));
+      const aliases = {
+        clase: ["clase", "clases"],
+        "año": ["año", "ano"],
+        "créditos": ["créditos", "creditos"],
+        "categorías": ["categorías", "categorias", "categoría", "categoria"],
+        compartido: ["compartido"],
+        tipo: ["tipo"],
+      };
+      const idx = Object.fromEntries(
+        Object.entries(aliases).map(([field, options]) => [
+          field,
+          headers.findIndex((header) => options.includes(header)),
+        ])
+      );
+      const missing = Object.entries(idx)
+        .filter(([, position]) => position < 0)
+        .map(([field]) => field);
       if (missing.length > 0) return { ok: false, error: `Faltan columnas: ${missing.join(", ")}` };
 
-      const idx = Object.fromEntries(headers.map((h, i) => [h, i]));
       const parsed = lines.slice(1).map((row) => row.split(",")).map((cells) => {
         const year = Number(String(cells[idx["año"]] || "").replace(/[^0-9]/g, ""));
         return {
