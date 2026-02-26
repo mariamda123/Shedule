@@ -9,141 +9,38 @@
   --danger: #b91c1c;
 }
 
-* {
-  box-sizing: border-box;
-}
+* { box-sizing: border-box; }
+body { margin: 0; font-family: Arial, sans-serif; background: var(--bg); color: var(--text); }
+.app-header { background: var(--card); padding: 1rem 1.5rem; border-bottom: 1px solid var(--border); }
+main { padding: 1rem 1.5rem 2rem; }
+.tabs { display: flex; gap: 0.5rem; margin-bottom: 1rem; }
+.tab-button { border: 1px solid var(--border); background: var(--card); padding: 0.5rem 1rem; border-radius: 0.5rem; cursor: pointer; }
+.tab-button.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+.tab-panel { display: none; }
+.tab-panel.active { display: block; }
+.grid-layout { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1rem; }
+.card { background: var(--card); border: 1px solid var(--border); border-radius: 0.75rem; padding: 1rem; }
+.stack { display: flex; flex-direction: column; gap: 0.45rem; }
+.inline-grid { display: grid; gap: 0.45rem; }
+.context-grid { grid-template-columns: 180px minmax(180px, 1fr); align-items: center; }
+.mt-1 { margin-top: 1rem; }
+input, select, button { font: inherit; }
+input, select { border: 1px solid var(--border); border-radius: 0.4rem; padding: 0.45rem 0.5rem; }
+button[type="submit"], .danger-button { margin-top: 0.3rem; border: none; color: #fff; border-radius: 0.4rem; padding: 0.55rem 0.75rem; cursor: pointer; background: var(--primary); }
+button[type="submit"]:hover { background: var(--primary-hover); }
+.danger-button { background: var(--danger); }
+.list { margin: 0.9rem 0 0; padding: 0; list-style: none; }
+.list-item { border: 1px solid var(--border); border-radius: 0.45rem; padding: 0.5rem; margin-bottom: 0.4rem; background: #fcfdff; }
+.shift-card { margin-top: 1rem; }
+.help-text { color: var(--muted); margin-top: 0; }
+.error-text { color: var(--danger); min-height: 1.2rem; margin: 0.6rem 0 0; }
+.card-actions { display: flex; justify-content: space-between; align-items: center; gap: 1rem; }
+.schedule-stack { display: flex; flex-direction: column; gap: 0.8rem; }
+.year-schedule h4 { margin: 0 0 0.35rem; }
+.schedule-table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+.schedule-table th, .schedule-table td { border: 1px solid var(--border); padding: 0.35rem; text-align: center; }
 
-body {
-  margin: 0;
-  font-family: Arial, sans-serif;
-  background-color: var(--bg);
-  color: var(--text);
-}
-
-.app-header {
-  background-color: var(--card);
-  padding: 1rem 1.5rem;
-  border-bottom: 1px solid var(--border);
-}
-
-main {
-  padding: 1rem 1.5rem 2rem;
-}
-
-.tabs {
-  display: flex;
-  gap: 0.5rem;
-  margin-bottom: 1rem;
-}
-
-.tab-button {
-  border: 1px solid var(--border);
-  background-color: var(--card);
-  color: var(--text);
-  padding: 0.5rem 1rem;
-  border-radius: 0.5rem;
-  cursor: pointer;
-}
-
-.tab-button.active {
-  background-color: var(--primary);
-  color: white;
-  border-color: var(--primary);
-}
-
-.tab-panel {
-  display: none;
-}
-
-.tab-panel.active {
-  display: block;
-}
-
-.grid-layout {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 1rem;
-}
-
-.card {
-  background-color: var(--card);
-  border: 1px solid var(--border);
-  border-radius: 0.75rem;
-  padding: 1rem;
-}
-
-.stack {
-  display: flex;
-  flex-direction: column;
-  gap: 0.45rem;
-}
-
-input,
-select,
-button {
-  font: inherit;
-}
-
-input,
-select {
-  border: 1px solid var(--border);
-  border-radius: 0.4rem;
-  padding: 0.45rem 0.5rem;
-}
-
-button[type="submit"] {
-  margin-top: 0.3rem;
-  background-color: var(--primary);
-  border: none;
-  color: #fff;
-  border-radius: 0.4rem;
-  padding: 0.55rem 0.75rem;
-  cursor: pointer;
-}
-
-button[type="submit"]:hover {
-  background-color: var(--primary-hover);
-}
-
-.list {
-  margin: 0.9rem 0 0;
-  padding: 0;
-  list-style: none;
-}
-
-.list-item {
-  border: 1px solid var(--border);
-  border-radius: 0.45rem;
-  padding: 0.5rem;
-  margin-bottom: 0.4rem;
-  background-color: #fcfdff;
-}
-
-.shift-card {
-  margin-top: 1rem;
-}
-
-.help-text {
-  color: var(--muted);
-  margin-top: 0;
-}
-
-.day-priority-grid {
-  border: 1px solid var(--border);
-  border-radius: 0.45rem;
-  padding: 0.65rem;
-  display: grid;
-  grid-template-columns: 1fr 90px;
-  gap: 0.45rem;
-}
-
-.day-priority-grid legend {
-  font-weight: bold;
-  padding: 0 0.2rem;
-}
-
-.error-text {
-  color: var(--danger);
-  min-height: 1.2rem;
-  margin: 0.6rem 0 0;
+@media (max-width: 720px) {
+  .context-grid { grid-template-columns: 1fr; }
+  .card-actions { flex-direction: column; align-items: flex-start; }
 }

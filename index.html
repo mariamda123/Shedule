@@ -20,17 +20,89 @@
 
       <section id="principal" class="tab-panel active" aria-labelledby="principal">
         <h2>Pantalla principal</h2>
+
         <article class="card">
-          <h3>Carga de clases por CSV</h3>
-          <p class="help-text">
-            Adjunta un archivo CSV con los campos: <strong>clase, año, créditos, categorías, compartido</strong>.
-          </p>
-          <form id="csv-form" class="stack">
-            <label for="class-csv">Archivo CSV</label>
-            <input id="class-csv" name="classCsv" type="file" accept=".csv" required />
-            <button type="submit">Adjuntar CSV</button>
+          <h3>Contexto activo de trabajo</h3>
+          <form id="active-context-form" class="inline-grid context-grid">
+            <label for="active-coordination">Coordinación</label>
+            <select id="active-coordination" name="coordinationId"></select>
+
+            <label for="active-career">Carrera</label>
+            <select id="active-career" name="careerId"></select>
+
+            <label for="active-shift">Turno</label>
+            <select id="active-shift" name="shiftId"></select>
           </form>
-          <ul id="csv-list" class="list"></ul>
+          <p class="help-text">La carga CSV, la clase manual y la generación automática usarán esta selección.</p>
+        </article>
+
+        <div class="grid-layout mt-1">
+          <article class="card">
+            <h3>Carga de clases por CSV</h3>
+            <p class="help-text">Campos esperados: <strong>clase, año, créditos, categorías, compartido</strong>.</p>
+            <form id="csv-form" class="stack">
+              <label for="class-csv">Archivo CSV</label>
+              <input id="class-csv" name="classCsv" type="file" accept=".csv" required />
+              <button type="submit">Adjuntar CSV</button>
+            </form>
+            <p id="csv-error" class="error-text" role="alert" aria-live="assertive"></p>
+            <ul id="csv-list" class="list"></ul>
+          </article>
+
+          <article class="card">
+            <h3>Agregar clase manual</h3>
+            <form id="manual-class-form" class="stack">
+              <label for="manual-class-name">Clase</label>
+              <input id="manual-class-name" name="className" type="text" required />
+
+              <label for="manual-class-year">Año</label>
+              <select id="manual-class-year" name="year" required>
+                <option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option>
+              </select>
+
+              <label for="manual-class-day">Día</label>
+              <select id="manual-class-day" name="day" required></select>
+
+              <label for="manual-class-block">Bloque</label>
+              <select id="manual-class-block" name="block" required></select>
+
+              <button type="submit">Agregar clase manual</button>
+            </form>
+            <p id="manual-class-error" class="error-text" role="alert" aria-live="assertive"></p>
+          </article>
+
+          <article class="card">
+            <h3>Generación automática por carrera</h3>
+            <p class="help-text">Usa la coordinación, carrera y turno seleccionados arriba. Aquí solo seleccionas el período.</p>
+            <form id="auto-generate-form" class="stack">
+              <label for="auto-period">Periodo</label>
+              <select id="auto-period" name="periodId"></select>
+              <button type="submit">Generar horario automáticamente</button>
+            </form>
+            <p id="auto-generate-error" class="error-text" role="alert" aria-live="assertive"></p>
+          </article>
+        </div>
+
+        <article class="card mt-1">
+          <div class="card-actions">
+            <h3>Horarios por año (carrera activa)</h3>
+            <button id="reset-schedule" type="button" class="danger-button">Reiniciar solo horarios</button>
+          </div>
+          <p class="help-text">Siempre se muestran 5 horarios (1° a 5° año). Si no hay clases, la tabla queda vacía.</p>
+          <div id="active-schedules" class="schedule-stack"></div>
+        </article>
+
+        <article class="card mt-1">
+          <h3>Vista por coordinación - carrera - turno</h3>
+          <form id="view-filter-form" class="inline-grid context-grid">
+            <label for="view-coordination">Coordinación</label>
+            <select id="view-coordination" name="coordinationId"></select>
+            <label for="view-career">Carrera</label>
+            <select id="view-career" name="careerId"></select>
+            <label for="view-shift">Turno</label>
+            <select id="view-shift" name="shiftId"></select>
+          </form>
+          <div id="view-schedules" class="schedule-stack"></div>
         </article>
       </section>
 
@@ -85,33 +157,16 @@
 
         <article class="card shift-card">
           <h3>Turnos por bloques</h3>
-          <p class="help-text">
-            Define nombre, días, prioridad por día, duración/créditos por bloque y periodos protegidos de receso/almuerzo.
-          </p>
+          <p class="help-text">Configura días hábiles y prioridad en una sola línea.</p>
           <form id="shift-form" class="stack">
             <label for="shift-name">Nombre del turno</label>
             <input id="shift-name" name="name" type="text" required />
 
-            <fieldset class="day-priority-grid">
-              <legend>Días y prioridad</legend>
-              <label><input type="checkbox" name="days" value="lunes" /> Lunes</label>
-              <input name="priority-lunes" type="number" min="0" value="0" aria-label="Prioridad lunes" />
+            <label for="shift-days">Días habilitados (separados por coma)</label>
+            <input id="shift-days" name="days" type="text" value="Lunes,Martes,Miércoles,Jueves,Viernes" required />
 
-              <label><input type="checkbox" name="days" value="martes" /> Martes</label>
-              <input name="priority-martes" type="number" min="0" value="0" aria-label="Prioridad martes" />
-
-              <label><input type="checkbox" name="days" value="miércoles" /> Miércoles</label>
-              <input name="priority-miércoles" type="number" min="0" value="0" aria-label="Prioridad miércoles" />
-
-              <label><input type="checkbox" name="days" value="jueves" /> Jueves</label>
-              <input name="priority-jueves" type="number" min="0" value="0" aria-label="Prioridad jueves" />
-
-              <label><input type="checkbox" name="days" value="viernes" /> Viernes</label>
-              <input name="priority-viernes" type="number" min="0" value="0" aria-label="Prioridad viernes" />
-
-              <label><input type="checkbox" name="days" value="sábado" /> Sábado</label>
-              <input name="priority-sábado" type="number" min="0" value="0" aria-label="Prioridad sábado" />
-            </fieldset>
+            <label for="shift-priorities">Prioridad por día</label>
+            <input id="shift-priorities" name="dayPriorities" type="text" value="Lunes:1,Martes:2,Miércoles:3,Jueves:4,Viernes:5" />
 
             <label for="shift-credits">Créditos por bloque</label>
             <input id="shift-credits" name="creditsPerBlock" type="number" min="1" required />
@@ -122,25 +177,34 @@
             <label for="shift-blocks">Cantidad de bloques</label>
             <input id="shift-blocks" name="blocks" type="number" min="1" required />
 
-            <label for="shift-start">Hora de inicio del turno</label>
-            <input id="shift-start" name="startTime" type="time" required />
-
-            <h4>Receso</h4>
-            <label for="recess-start">Inicio</label>
-            <input id="recess-start" name="recessStart" type="time" />
-            <label for="recess-end">Fin</label>
-            <input id="recess-end" name="recessEnd" type="time" />
-
-            <h4>Almuerzo</h4>
-            <label for="lunch-start">Inicio</label>
-            <input id="lunch-start" name="lunchStart" type="time" />
-            <label for="lunch-end">Fin</label>
-            <input id="lunch-end" name="lunchEnd" type="time" />
+            <label for="shift-start">Hora inicio de las clases</label>
+            <input id="shift-start" name="startTime" type="time" value="08:00" required />
 
             <button type="submit">Agregar turno</button>
           </form>
           <p id="shift-error" class="error-text" role="alert" aria-live="assertive"></p>
           <ul id="shift-list" class="list"></ul>
+        </article>
+
+        <article class="card shift-card">
+          <h3>Configuración de periodos por turno</h3>
+          <form id="period-form" class="stack">
+            <label for="period-shift">Turno</label>
+            <select id="period-shift" name="shiftId" required></select>
+
+            <label for="period-name">Nombre del período</label>
+            <input id="period-name" name="name" type="text" placeholder="Ej. Matutino" required />
+
+            <label for="period-start">Inicio</label>
+            <input id="period-start" name="startTime" type="time" required />
+
+            <label for="period-end">Fin</label>
+            <input id="period-end" name="endTime" type="time" required />
+
+            <button type="submit">Agregar período</button>
+          </form>
+          <p id="period-error" class="error-text" role="alert" aria-live="assertive"></p>
+          <ul id="period-list" class="list"></ul>
         </article>
       </section>
     </main>
