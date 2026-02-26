@@ -239,6 +239,8 @@
     activeSchedules: document.querySelector("#active-schedules"),
     viewSchedules: document.querySelector("#view-schedules"),
     resetScheduleBtn: document.querySelector("#reset-schedule"),
+    exportSchedulePdfBtn: document.querySelector("#export-schedule-pdf"),
+    exportPdfError: document.querySelector("#export-pdf-error"),
 
     activeCoordination: document.querySelector("#active-coordination"),
     activeCareer: document.querySelector("#active-career"),
@@ -347,6 +349,79 @@
       wrapper.append(table);
       container.append(wrapper);
     });
+  };
+
+  const escapeHtml = (value) => String(value)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
+
+  const createSchedulePdfDocument = (context) => {
+    const { coordinations, careers, shifts, scheduleEntries } = state.data;
+    const shift = shifts.find((item) => item.id === context.shiftId);
+    if (!shift) return "";
+
+    const coordinationName = coordinations.find((item) => item.id === context.coordinationId)?.name ?? "Sin coordinación";
+    const careerName = careers.find((item) => item.id === context.careerId)?.name ?? "Sin carrera";
+
+    const tables = YEARS.map((year) => {
+      const headerCells = shift.days.map((day) => `<th>${escapeHtml(day)}</th>`).join("");
+      const rows = Array.from({ length: shift.blocks }, (_, index) => {
+        const block = index + 1;
+        const cells = shift.days.map((day) => {
+          const match = scheduleEntries.find((entry) =>
+            entry.coordinationId === context.coordinationId &&
+            entry.careerId === context.careerId &&
+            entry.shiftId === context.shiftId &&
+            entry.year === year &&
+            entry.day === day &&
+            entry.block === block
+          );
+          return `<td>${escapeHtml(match?.className || "")}</td>`;
+        }).join("");
+        return `<tr><th>${block}</th>${cells}</tr>`;
+      }).join("");
+
+      return `
+        <section class="year-section">
+          <h2>${year}° año</h2>
+          <table>
+            <thead><tr><th>Bloque</th>${headerCells}</tr></thead>
+            <tbody>${rows}</tbody>
+          </table>
+        </section>
+      `;
+    }).join("");
+
+    const now = new Date().toLocaleString("es-NI");
+    return `
+      <!doctype html>
+      <html lang="es">
+        <head>
+          <meta charset="UTF-8" />
+          <title>Horario ${escapeHtml(careerName)}</title>
+          <style>
+            body { font-family: Arial, sans-serif; color: #111827; margin: 24px; }
+            h1 { margin: 0 0 8px; font-size: 20px; }
+            .meta { margin: 0 0 16px; color: #4b5563; }
+            .year-section { margin-bottom: 20px; break-inside: avoid; }
+            h2 { margin: 0 0 8px; font-size: 16px; }
+            table { width: 100%; border-collapse: collapse; font-size: 12px; }
+            th, td { border: 1px solid #d1d5db; padding: 6px; text-align: center; min-width: 90px; }
+            @media print {
+              @page { size: A4 landscape; margin: 12mm; }
+            }
+          </style>
+        </head>
+        <body>
+          <h1>Horario académico</h1>
+          <p class="meta"><strong>Coordinación:</strong> ${escapeHtml(coordinationName)} · <strong>Carrera:</strong> ${escapeHtml(careerName)} · <strong>Turno:</strong> ${escapeHtml(shift.name)} · <strong>Generado:</strong> ${escapeHtml(now)}</p>
+          ${tables}
+        </body>
+      </html>
+    `;
   };
 
   const render = () => {
@@ -590,6 +665,33 @@
     service.resetSchedules();
     refresh();
     render();
+  });
+
+  ui.exportSchedulePdfBtn.addEventListener("click", () => {
+    ui.exportPdfError.textContent = "";
+    const context = state.data.activeContext;
+    if (!context.coordinationId || !context.careerId || !context.shiftId) {
+      ui.exportPdfError.textContent = "Selecciona coordinación, carrera y turno para exportar el horario en PDF.";
+      return;
+    }
+
+    const printableDocument = createSchedulePdfDocument(context);
+    if (!printableDocument) {
+      ui.exportPdfError.textContent = "No fue posible generar la vista para exportar. Verifica el turno activo.";
+      return;
+    }
+
+    const exportWindow = window.open("", "_blank", "noopener,noreferrer");
+    if (!exportWindow) {
+      ui.exportPdfError.textContent = "El navegador bloqueó la ventana de impresión. Permite ventanas emergentes e intenta de nuevo.";
+      return;
+    }
+
+    exportWindow.document.open();
+    exportWindow.document.write(printableDocument);
+    exportWindow.document.close();
+    exportWindow.focus();
+    exportWindow.print();
   });
 
   const updateActiveContext = () => {
