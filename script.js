@@ -192,6 +192,26 @@
       repository.save(db);
       return { ok: true, rows: parsed.length };
     },
+    addScheduleEntry(payload) {
+      const db = repository.get();
+      const current = db.scheduleEntries.find((entry) =>
+        entry.coordinationId === payload.coordinationId &&
+        entry.careerId === payload.careerId &&
+        entry.shiftId === payload.shiftId &&
+        entry.year === payload.year &&
+        entry.day === payload.day &&
+        entry.block === payload.block
+      );
+
+      if (current) {
+        db.scheduleEntries = db.scheduleEntries.filter((entry) => entry.id !== current.id);
+      }
+
+      db.scheduleEntries.push({ id: createId("entry"), ...payload });
+      repository.save(db);
+
+      return { replaced: Boolean(current), previous: current };
+    },
     resetSchedules() {
       const db = repository.get();
       db.scheduleEntries = [];
@@ -261,6 +281,8 @@
     csvForm: document.querySelector("#csv-form"),
     csvError: document.querySelector("#csv-error"),
     csvList: document.querySelector("#csv-list"),
+    manualClassForm: document.querySelector("#manual-class-form"),
+    manualClassError: document.querySelector("#manual-class-error"),
     autoGenerateForm: document.querySelector("#auto-generate-form"),
     autoGenerateError: document.querySelector("#auto-generate-error"),
     activeSchedules: document.querySelector("#active-schedules"),
@@ -271,6 +293,9 @@
     activeCoordination: document.querySelector("#active-coordination"),
     activeCareer: document.querySelector("#active-career"),
     activeShift: document.querySelector("#active-shift"),
+    manualClassDay: document.querySelector("#manual-class-day"),
+    manualClassBlock: document.querySelector("#manual-class-block"),
+    manualClassroom: document.querySelector("#manual-classroom"),
     autoPeriod: document.querySelector("#auto-period"),
 
     coordinationForm: document.querySelector("#coordination-form"),
@@ -365,7 +390,8 @@
           );
           if (match) {
             const classroomName = state.data.classrooms.find((item) => item.id === match.classroomId)?.name ?? "Sin aula";
-            cell.textContent = `${match.className} · ${year}° · ${classroomName}`;
+            const blockHour = toHourLabel(shift, block);
+            cell.textContent = `${match.className} · ${year}° · ${classroomName} · ${blockHour}`;
           } else {
             cell.textContent = "";
           }
@@ -410,7 +436,7 @@
           );
           if (!match) return "<td></td>";
           const classroomName = state.data.classrooms.find((item) => item.id === match.classroomId)?.name ?? "Sin aula";
-          return `<td>${escapeHtml(`${match.className} · ${year}° · ${classroomName}`)}</td>`;
+          return `<td>${escapeHtml(`${match.className} · ${year}° · ${classroomName} · ${blockHour}`)}</td>`;
         }).join("");
         return `<tr><th>${escapeHtml(`Bloque ${block}`)}</th><td>${escapeHtml(blockHour)}</td>${cells}</tr>`;
       }).join("");
@@ -485,6 +511,9 @@
 
     const selectedShift = shifts.find((item) => item.id === activeContext.shiftId);
     const selectedPeriodId = ui.autoPeriod.value;
+    ui.manualClassDay.innerHTML = "";
+    ui.manualClassBlock.innerHTML = "";
+    ui.manualClassroom.innerHTML = "";
     ui.autoPeriod.innerHTML = "";
     ui.autoPeriod.append(new Option("Todo el cuatrimestre", ""));
     const periodsForSelectedShift = selectedShift
@@ -495,6 +524,14 @@
     if (selectedPeriodId && relevantPeriods.some((period) => period.id === selectedPeriodId)) {
       ui.autoPeriod.value = selectedPeriodId;
     }
+
+    if (selectedShift) {
+      selectedShift.days.forEach((day) => ui.manualClassDay.append(new Option(day, day)));
+      for (let block = 1; block <= selectedShift.blocks; block += 1) {
+        ui.manualClassBlock.append(new Option(toHourLabel(selectedShift, block), String(block)));
+      }
+    }
+    classrooms.forEach((classroom) => ui.manualClassroom.append(new Option(`${classroom.name} (${classroom.location})`, classroom.id)));
 
     buildScheduleTables(ui.activeSchedules, activeContext);
   };
@@ -635,6 +672,38 @@
       ui.csvError.textContent = response.error;
       return;
     }
+    refresh();
+    render();
+    event.target.reset();
+  });
+
+  ui.manualClassForm.addEventListener("submit", (event) => {
+    event.preventDefault();
+    ui.manualClassError.textContent = "";
+    const context = state.data.activeContext;
+    if (!context.careerId) {
+      ui.manualClassError.textContent = "Selecciona una carrera antes de agregar una clase manual.";
+      return;
+    }
+
+    const payload = {
+      coordinationId: context.coordinationId,
+      careerId: context.careerId,
+      shiftId: context.shiftId,
+      year: Number(event.target.year.value),
+      day: event.target.day.value,
+      block: Number(event.target.block.value),
+      className: event.target.className.value.trim(),
+      classroomId: event.target.classroomId.value,
+      source: "manual",
+    };
+
+    const result = service.addScheduleEntry(payload);
+    if (result.replaced) {
+      const careerName = state.data.careers.find((item) => item.id === context.careerId)?.name || "carrera";
+      ui.manualClassError.textContent = `Advertencia: se reemplazó la clase existente en ese bloque para ${payload.year}° año de ${careerName}.`;
+    }
+
     refresh();
     render();
     event.target.reset();

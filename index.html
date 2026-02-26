@@ -33,7 +33,7 @@
             <label for="active-shift">Turno</label>
             <select id="active-shift" name="shiftId"></select>
           </form>
-          <p class="help-text">La carga CSV y la generación automática usarán esta selección.</p>
+          <p class="help-text">La carga CSV, la clase manual y la generación automática usarán esta selección.</p>
         </article>
 
         <div class="grid-layout mt-1">
@@ -47,6 +47,31 @@
             </form>
             <p id="csv-error" class="error-text" role="alert" aria-live="assertive"></p>
             <ul id="csv-list" class="list"></ul>
+          </article>
+
+          <article class="card">
+            <h3>Agregar clase manual</h3>
+            <form id="manual-class-form" class="stack">
+              <label for="manual-class-name">Clase</label>
+              <input id="manual-class-name" name="className" type="text" required />
+
+              <label for="manual-class-year">Año</label>
+              <select id="manual-class-year" name="year" required>
+                <option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option>
+              </select>
+
+              <label for="manual-class-day">Día</label>
+              <select id="manual-class-day" name="day" required></select>
+
+              <label for="manual-class-block">Bloque</label>
+              <select id="manual-class-block" name="block" required></select>
+
+              <label for="manual-classroom">Aula</label>
+              <select id="manual-classroom" name="classroomId" required></select>
+
+              <button type="submit">Agregar clase manual</button>
+            </form>
+            <p id="manual-class-error" class="error-text" role="alert" aria-live="assertive"></p>
           </article>
 
           <article class="card">
