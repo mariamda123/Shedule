@@ -92,13 +92,12 @@
       const shift = repository.get().shifts.find((item) => item.id === payload.shiftId);
       if (!shift) return { ok: false, error: "Selecciona un turno válido." };
 
-      const start = toMinuteMark(payload.startTime);
-      const end = toMinuteMark(payload.endTime);
-      const shiftStart = toMinuteMark(shift.startTime);
-      const shiftEnd = shiftStart + shift.blocks * shift.minutesPerBlock;
-
-      if (start >= end) return { ok: false, error: "El período debe terminar después de iniciar." };
-      if (start < shiftStart || end > shiftEnd) return { ok: false, error: "El período debe estar dentro del turno." };
+      const start = new Date(payload.startDate);
+      const end = new Date(payload.endDate);
+      if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+        return { ok: false, error: "Indica fechas válidas para el cuatrimestre." };
+      }
+      if (start >= end) return { ok: false, error: "La fecha final debe ser posterior a la fecha de inicio." };
 
       const db = repository.get();
       db.periods.push({ id: createId("period"), ...payload });
@@ -175,12 +174,12 @@
       const db = repository.get();
       const shift = db.shifts.find((item) => item.id === shiftId);
       if (!shift) return { ok: false, error: "Turno inválido." };
-      const period = db.periods.find((item) => item.id === periodId && item.shiftId === shiftId);
-      const periodStart = period ? toMinuteMark(period.startTime) : toMinuteMark(shift.startTime);
-      const periodEnd = period ? toMinuteMark(period.endTime) : toMinuteMark(shift.startTime) + shift.blocks * shift.minutesPerBlock;
+      if (periodId && !db.periods.find((item) => item.id === periodId && item.shiftId === shiftId)) {
+        return { ok: false, error: "Cuatrimestre inválido para el turno seleccionado." };
+      }
 
-      const startBlock = Math.floor((periodStart - toMinuteMark(shift.startTime)) / shift.minutesPerBlock) + 1;
-      const endBlock = Math.floor((periodEnd - toMinuteMark(shift.startTime)) / shift.minutesPerBlock);
+      const startBlock = 1;
+      const endBlock = shift.blocks;
 
       const classes = db.classCatalog.filter((item) => item.coordinationId === coordinationId && item.careerId === careerId);
       if (classes.length === 0) return { ok: false, error: "No hay clases cargadas por CSV para esta carrera." };
@@ -366,7 +365,7 @@
     periods.forEach((period) => {
       const shiftName = shifts.find((item) => item.id === period.shiftId)?.name ?? "Turno";
       const row = ui.listItemTemplate.content.firstElementChild.cloneNode(true);
-      row.innerHTML = `${shiftName} · ${period.name} (${period.startTime}-${period.endTime}) <button type="button" data-period-id="${period.id}">Eliminar</button>`;
+      row.innerHTML = `${shiftName} · ${period.name} (${period.startDate} a ${period.endDate}) <button type="button" data-period-id="${period.id}">Eliminar</button>`;
       ui.periodList.append(row);
     });
 
@@ -393,8 +392,8 @@
       }
       const relevantPeriods = periods.filter((item) => item.shiftId === selectedShift.id);
       ui.autoPeriod.innerHTML = "";
-      ui.autoPeriod.append(new Option("Todo el turno", ""));
-      relevantPeriods.forEach((period) => ui.autoPeriod.append(new Option(`${period.name} (${period.startTime}-${period.endTime})`, period.id)));
+      ui.autoPeriod.append(new Option("Todo el cuatrimestre", ""));
+      relevantPeriods.forEach((period) => ui.autoPeriod.append(new Option(`${period.name} (${period.startDate} a ${period.endDate})`, period.id)));
     }
 
     buildScheduleTables(ui.activeSchedules, activeContext);
@@ -477,8 +476,8 @@
     const response = service.createPeriod({
       shiftId: form.shiftId.value,
       name: form.name.value.trim(),
-      startTime: form.startTime.value,
-      endTime: form.endTime.value,
+      startDate: form.startDate.value,
+      endDate: form.endDate.value,
     });
     if (!response.ok) {
       ui.periodError.textContent = response.error;
