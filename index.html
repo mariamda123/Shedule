@@ -66,6 +66,9 @@
               <label for="manual-class-block">Bloque</label>
               <select id="manual-class-block" name="block" required></select>
 
+              <label for="manual-classroom">Aula</label>
+              <select id="manual-classroom" name="classroomId" required></select>
+
               <button type="submit">Agregar clase manual</button>
             </form>
             <p id="manual-class-error" class="error-text" role="alert" aria-live="assertive"></p>
@@ -169,7 +172,7 @@
         </div>
 
         <article class="card shift-card">
-          <h3>Turnos por bloques</h3>
+          <h3>Turnos por horas</h3>
           <p class="help-text">Configura días hábiles y prioridad en una sola línea.</p>
           <form id="shift-form" class="stack">
             <label for="shift-name">Nombre del turno</label>
@@ -192,6 +195,18 @@
 
             <label for="shift-start">Hora inicio de las clases</label>
             <input id="shift-start" name="startTime" type="time" value="08:00" required />
+
+            <label for="shift-recess-start">Hora inicio de receso</label>
+            <input id="shift-recess-start" name="recessStart" type="time" value="10:00" required />
+
+            <label for="shift-recess-end">Hora fin de receso</label>
+            <input id="shift-recess-end" name="recessEnd" type="time" value="10:20" required />
+
+            <label for="shift-lunch-start">Hora inicio de almuerzo</label>
+            <input id="shift-lunch-start" name="lunchStart" type="time" value="12:00" required />
+
+            <label for="shift-lunch-end">Hora fin de almuerzo</label>
+            <input id="shift-lunch-end" name="lunchEnd" type="time" value="13:00" required />
 
             <button type="submit">Agregar turno</button>
           </form>

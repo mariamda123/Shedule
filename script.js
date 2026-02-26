@@ -30,6 +30,17 @@
     const [h, m] = value.split(":").map(Number);
     return h * 60 + m;
   };
+  const toHourLabel = (shift, block) => {
+    const shiftStart = toMinuteMark(shift.startTime) ?? 480;
+    const start = shiftStart + ((block - 1) * shift.minutesPerBlock);
+    const end = start + shift.minutesPerBlock;
+    const toText = (mins) => {
+      const h = Math.floor(mins / 60).toString().padStart(2, "0");
+      const m = (mins % 60).toString().padStart(2, "0");
+      return `${h}:${m}`;
+    };
+    return `${toText(start)} - ${toText(end)}`;
+  };
 
   const createDataSource = (key, seed) => ({
     read() {
@@ -217,6 +228,7 @@
               entry.block === block
             );
             if (occupied) continue;
+            const availableClassroom = db.classrooms.find((classroom) => classroom.type === item.classroomType) || db.classrooms[0];
             db.scheduleEntries.push({
               id: createId("entry"),
               coordinationId,
@@ -226,6 +238,7 @@
               day,
               block,
               className: item.className,
+              classroomId: availableClassroom?.id || "",
               source: "auto",
             });
             inserted += 1;
@@ -260,6 +273,7 @@
     activeShift: document.querySelector("#active-shift"),
     manualClassDay: document.querySelector("#manual-class-day"),
     manualClassBlock: document.querySelector("#manual-class-block"),
+    manualClassroom: document.querySelector("#manual-classroom"),
     autoPeriod: document.querySelector("#auto-period"),
 
     coordinationForm: document.querySelector("#coordination-form"),
@@ -331,7 +345,7 @@
       table.className = "schedule-table";
       const thead = document.createElement("thead");
       const hrow = document.createElement("tr");
-      hrow.append(Object.assign(document.createElement("th"), { textContent: "Bloque" }));
+      hrow.append(Object.assign(document.createElement("th"), { textContent: "Horario" }));
       shift.days.forEach((day) => hrow.append(Object.assign(document.createElement("th"), { textContent: day })));
       thead.append(hrow);
       table.append(thead);
@@ -339,7 +353,7 @@
       const tbody = document.createElement("tbody");
       for (let block = 1; block <= shift.blocks; block += 1) {
         const row = document.createElement("tr");
-        row.append(Object.assign(document.createElement("th"), { textContent: String(block) }));
+        row.append(Object.assign(document.createElement("th"), { textContent: toHourLabel(shift, block) }));
         shift.days.forEach((day) => {
           const cell = document.createElement("td");
           const match = scheduleEntries.find((entry) =>
@@ -350,7 +364,12 @@
             entry.day === day &&
             entry.block === block
           );
-          cell.textContent = match?.className || "";
+          if (match) {
+            const classroomName = state.data.classrooms.find((item) => item.id === match.classroomId)?.name ?? "Sin aula";
+            cell.textContent = `${match.className} · ${year}° · ${classroomName}`;
+          } else {
+            cell.textContent = "";
+          }
           row.append(cell);
         });
         tbody.append(row);
@@ -389,16 +408,18 @@
             entry.day === day &&
             entry.block === block
           );
-          return `<td>${escapeHtml(match?.className || "")}</td>`;
+          if (!match) return "<td></td>";
+          const classroomName = state.data.classrooms.find((item) => item.id === match.classroomId)?.name ?? "Sin aula";
+          return `<td>${escapeHtml(`${match.className} · ${year}° · ${classroomName}`)}</td>`;
         }).join("");
-        return `<tr><th>${block}</th>${cells}</tr>`;
+        return `<tr><th>${escapeHtml(toHourLabel(shift, block))}</th>${cells}</tr>`;
       }).join("");
 
       return `
         <section class="year-section">
           <h2>${year}° año</h2>
           <table>
-            <thead><tr><th>Bloque</th>${headerCells}</tr></thead>
+            <thead><tr><th>Horario</th>${headerCells}</tr></thead>
             <tbody>${rows}</tbody>
           </table>
         </section>
@@ -442,7 +463,7 @@
     renderList(ui.categoryList, categories, (item) => item.name);
     renderList(ui.teacherList, teachers, (item) => item.name);
     renderList(ui.classroomList, classrooms, (item) => `${item.name} · ${item.location} · ${item.type}`);
-    renderList(ui.shiftList, shifts, (item) => `${item.name} · Días: ${item.days.join(", ")} · Prioridad: ${Object.entries(item.priorities).map(([k, v]) => `${k}:${v}`).join(", ")} · ${item.startTime}`);
+    renderList(ui.shiftList, shifts, (item) => `${item.name} · Días: ${item.days.join(", ")} · Prioridad: ${Object.entries(item.priorities).map(([k, v]) => `${k}:${v}`).join(", ")} · Inicio: ${item.startTime || "08:00"} · Receso: ${(item.recessStart || "--:--")}-${(item.recessEnd || "--:--")} · Almuerzo: ${(item.lunchStart || "--:--")}-${(item.lunchEnd || "--:--")}`);
 
     renderList(ui.csvList, csvUploads, (item) => `${item.fileName} · ${item.rows} clases · ${new Date(item.uploadedAt).toLocaleString("es-NI")}`);
 
@@ -466,6 +487,7 @@
     const selectedPeriodId = ui.autoPeriod.value;
     ui.manualClassDay.innerHTML = "";
     ui.manualClassBlock.innerHTML = "";
+    ui.manualClassroom.innerHTML = "";
     ui.autoPeriod.innerHTML = "";
     ui.autoPeriod.append(new Option("Todo el cuatrimestre", ""));
     const periodsForSelectedShift = selectedShift
@@ -480,9 +502,10 @@
     if (selectedShift) {
       selectedShift.days.forEach((day) => ui.manualClassDay.append(new Option(day, day)));
       for (let block = 1; block <= selectedShift.blocks; block += 1) {
-        ui.manualClassBlock.append(new Option(String(block), String(block)));
+        ui.manualClassBlock.append(new Option(toHourLabel(selectedShift, block), String(block)));
       }
     }
+    classrooms.forEach((classroom) => ui.manualClassroom.append(new Option(`${classroom.name} (${classroom.location})`, classroom.id)));
 
     buildScheduleTables(ui.activeSchedules, activeContext);
   };
@@ -530,6 +553,15 @@
       prioritiesRaw.split(",").map((pair) => pair.split(":").map((x) => x.trim())).filter((pair) => pair[0] && pair[1]).map(([day, value]) => [day.toLowerCase(), Number(value) || 0])
     );
 
+    const recessStart = toMinuteMark(form.recessStart.value);
+    const recessEnd = toMinuteMark(form.recessEnd.value);
+    const lunchStart = toMinuteMark(form.lunchStart.value);
+    const lunchEnd = toMinuteMark(form.lunchEnd.value);
+    if (!(recessStart < recessEnd && lunchStart < lunchEnd)) {
+      ui.shiftError.textContent = "Verifica los rangos de receso y almuerzo.";
+      return;
+    }
+
     const response = service.createShift({
       name: form.name.value.trim(),
       days,
@@ -538,6 +570,10 @@
       minutesPerBlock: Number(form.minutesPerBlock.value),
       blocks: Number(form.blocks.value),
       startTime: form.startTime.value || "08:00",
+      recessStart: form.recessStart.value,
+      recessEnd: form.recessEnd.value,
+      lunchStart: form.lunchStart.value,
+      lunchEnd: form.lunchEnd.value,
     });
 
     if (!response.ok) {
@@ -548,6 +584,10 @@
     render();
     form.reset();
     form.startTime.value = "08:00";
+    form.recessStart.value = "10:00";
+    form.recessEnd.value = "10:20";
+    form.lunchStart.value = "12:00";
+    form.lunchEnd.value = "13:00";
     form.days.value = "Lunes,Martes,Miércoles,Jueves,Viernes";
     form.dayPriorities.value = "Lunes:1,Martes:2,Miércoles:3,Jueves:4,Viernes:5";
   });
@@ -628,6 +668,7 @@
       day: event.target.day.value,
       block: Number(event.target.block.value),
       className: event.target.className.value.trim(),
+      classroomId: event.target.classroomId.value,
       source: "manual",
     };
 
