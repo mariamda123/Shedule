@@ -383,17 +383,24 @@
     renderSelect(ui.viewCareer, viewCareers, "Selecciona carrera", viewContext.careerId || activeContext.careerId);
 
     const selectedShift = shifts.find((item) => item.id === activeContext.shiftId);
+    const selectedPeriodId = ui.autoPeriod.value;
     ui.manualClassDay.innerHTML = "";
     ui.manualClassBlock.innerHTML = "";
+    ui.autoPeriod.innerHTML = "";
+    ui.autoPeriod.append(new Option("Todo el cuatrimestre", ""));
+    const relevantPeriods = selectedShift
+      ? periods.filter((item) => item.shiftId === selectedShift.id)
+      : periods;
+    relevantPeriods.forEach((period) => ui.autoPeriod.append(new Option(`${period.name} (${period.startDate} a ${period.endDate})`, period.id)));
+    if (selectedPeriodId && relevantPeriods.some((period) => period.id === selectedPeriodId)) {
+      ui.autoPeriod.value = selectedPeriodId;
+    }
+
     if (selectedShift) {
       selectedShift.days.forEach((day) => ui.manualClassDay.append(new Option(day, day)));
       for (let block = 1; block <= selectedShift.blocks; block += 1) {
         ui.manualClassBlock.append(new Option(String(block), String(block)));
       }
-      const relevantPeriods = periods.filter((item) => item.shiftId === selectedShift.id);
-      ui.autoPeriod.innerHTML = "";
-      ui.autoPeriod.append(new Option("Todo el cuatrimestre", ""));
-      relevantPeriods.forEach((period) => ui.autoPeriod.append(new Option(`${period.name} (${period.startDate} a ${period.endDate})`, period.id)));
     }
 
     buildScheduleTables(ui.activeSchedules, activeContext);
