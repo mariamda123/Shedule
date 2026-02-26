@@ -473,11 +473,22 @@
     event.preventDefault();
     ui.periodError.textContent = "";
     const form = event.target;
+    const formData = new FormData(form);
+    const shiftId = String(formData.get("shiftId") || "");
+    const periodName = String(formData.get("name") || "").trim();
+    const startDate = String(formData.get("startDate") || "");
+    const endDate = String(formData.get("endDate") || "");
+
+    if (!shiftId || !periodName) {
+      ui.periodError.textContent = "Selecciona turno e indica el nombre del cuatrimestre.";
+      return;
+    }
+
     const response = service.createPeriod({
-      shiftId: form.shiftId.value,
-      name: form.name.value.trim(),
-      startDate: form.startDate.value,
-      endDate: form.endDate.value,
+      shiftId,
+      name: periodName,
+      startDate,
+      endDate,
     });
     if (!response.ok) {
       ui.periodError.textContent = response.error;
