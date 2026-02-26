@@ -73,9 +73,9 @@
 
           <article class="card">
             <h3>Generación automática por carrera</h3>
-            <p class="help-text">Usa la coordinación, carrera y turno seleccionados arriba. Aquí solo seleccionas el período.</p>
+            <p class="help-text">Usa la coordinación, carrera y turno seleccionados arriba. Aquí solo seleccionas el cuatrimestre.</p>
             <form id="auto-generate-form" class="stack">
-              <label for="auto-period">Periodo</label>
+              <label for="auto-period">Cuatrimestre</label>
               <select id="auto-period" name="periodId"></select>
               <button type="submit">Generar horario automáticamente</button>
             </form>
@@ -208,21 +208,21 @@
         </article>
 
         <article class="card shift-card">
-          <h3>Configuración de periodos por turno</h3>
+          <h3>Configuración de cuatrimestres por turno</h3>
           <form id="period-form" class="stack">
             <label for="period-shift">Turno</label>
             <select id="period-shift" name="shiftId" required></select>
 
-            <label for="period-name">Nombre del período</label>
-            <input id="period-name" name="name" type="text" placeholder="Ej. Matutino" required />
+            <label for="period-name">Nombre del cuatrimestre</label>
+            <input id="period-name" name="name" type="text" placeholder="Ej. Primer cuatrimestre" required />
 
-            <label for="period-start">Inicio</label>
-            <input id="period-start" name="startTime" type="time" required />
+            <label for="period-start">Fecha inicio de cuatrimestre</label>
+            <input id="period-start" name="startDate" type="date" required />
 
-            <label for="period-end">Fin</label>
-            <input id="period-end" name="endTime" type="time" required />
+            <label for="period-end">Fecha final de cuatrimestre</label>
+            <input id="period-end" name="endDate" type="date" required />
 
-            <button type="submit">Agregar período</button>
+            <button type="submit">Agregar cuatrimestre</button>
           </form>
           <p id="period-error" class="error-text" role="alert" aria-live="assertive"></p>
           <ul id="period-list" class="list"></ul>
