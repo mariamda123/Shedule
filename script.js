@@ -345,7 +345,8 @@
       table.className = "schedule-table";
       const thead = document.createElement("thead");
       const hrow = document.createElement("tr");
-      hrow.append(Object.assign(document.createElement("th"), { textContent: "Horario" }));
+      hrow.append(Object.assign(document.createElement("th"), { textContent: "Bloque" }));
+      hrow.append(Object.assign(document.createElement("th"), { textContent: "Hora" }));
       shift.days.forEach((day) => hrow.append(Object.assign(document.createElement("th"), { textContent: day })));
       thead.append(hrow);
       table.append(thead);
@@ -353,7 +354,8 @@
       const tbody = document.createElement("tbody");
       for (let block = 1; block <= shift.blocks; block += 1) {
         const row = document.createElement("tr");
-        row.append(Object.assign(document.createElement("th"), { textContent: toHourLabel(shift, block) }));
+        row.append(Object.assign(document.createElement("th"), { textContent: `Bloque ${block}` }));
+        row.append(Object.assign(document.createElement("td"), { textContent: toHourLabel(shift, block) }));
         shift.days.forEach((day) => {
           const cell = document.createElement("td");
           const match = scheduleEntries.find((entry) =>
@@ -366,7 +368,8 @@
           );
           if (match) {
             const classroomName = state.data.classrooms.find((item) => item.id === match.classroomId)?.name ?? "Sin aula";
-            cell.textContent = `${match.className} · ${year}° · ${classroomName}`;
+            const blockHour = toHourLabel(shift, block);
+            cell.textContent = `${match.className} · ${year}° · ${classroomName} · ${blockHour}`;
           } else {
             cell.textContent = "";
           }
@@ -399,6 +402,7 @@
       const headerCells = shift.days.map((day) => `<th>${escapeHtml(day)}</th>`).join("");
       const rows = Array.from({ length: shift.blocks }, (_, index) => {
         const block = index + 1;
+        const blockHour = toHourLabel(shift, block);
         const cells = shift.days.map((day) => {
           const match = scheduleEntries.find((entry) =>
             entry.coordinationId === context.coordinationId &&
@@ -410,16 +414,16 @@
           );
           if (!match) return "<td></td>";
           const classroomName = state.data.classrooms.find((item) => item.id === match.classroomId)?.name ?? "Sin aula";
-          return `<td>${escapeHtml(`${match.className} · ${year}° · ${classroomName}`)}</td>`;
+          return `<td>${escapeHtml(`${match.className} · ${year}° · ${classroomName} · ${blockHour}`)}</td>`;
         }).join("");
-        return `<tr><th>${escapeHtml(toHourLabel(shift, block))}</th>${cells}</tr>`;
+        return `<tr><th>${escapeHtml(`Bloque ${block}`)}</th><td>${escapeHtml(blockHour)}</td>${cells}</tr>`;
       }).join("");
 
       return `
         <section class="year-section">
           <h2>${year}° año</h2>
           <table>
-            <thead><tr><th>Horario</th>${headerCells}</tr></thead>
+            <thead><tr><th>Bloque</th><th>Hora</th>${headerCells}</tr></thead>
             <tbody>${rows}</tbody>
           </table>
         </section>
