@@ -47,6 +47,33 @@
     if (["taller", "talleres"].includes(raw)) return "Talleres";
     return "Aula normal";
   };
+  const parseAcademicYear = (value) => {
+    const raw = String(value || "").trim().toLowerCase();
+    if (!raw) return 1;
+
+    const numeric = Number(raw.replace(/[^0-9]/g, ""));
+    if (YEARS.includes(numeric)) return numeric;
+
+    const romanMap = { i: 1, ii: 2, iii: 3, iv: 4, v: 5 };
+    const normalizedRoman = raw.replace(/[^ivx]/g, "");
+    if (romanMap[normalizedRoman] && YEARS.includes(romanMap[normalizedRoman])) {
+      return romanMap[normalizedRoman];
+    }
+
+    const keywordMap = {
+      primer: 1,
+      primero: 1,
+      segundo: 2,
+      tercer: 3,
+      tercero: 3,
+      cuarto: 4,
+      quinto: 5,
+    };
+    const keyword = Object.keys(keywordMap).find((item) => raw.includes(item));
+    if (keyword) return keywordMap[keyword];
+
+    return 1;
+  };
   const toMinuteMark = (value) => {
     if (!value) return null;
     const [h, m] = value.split(":").map(Number);
@@ -173,11 +200,11 @@
       if (missing.length > 0) return { ok: false, error: `Faltan columnas: ${missing.join(", ")}` };
 
       const parsed = lines.slice(1).map((row) => row.split(",")).map((cells) => {
-        const year = Number(String(cells[idx["año"]] || "").replace(/[^0-9]/g, ""));
+        const year = parseAcademicYear(cells[idx["año"]]);
         return {
           id: createId("class"),
           className: (cells[idx.clase] || "").trim(),
-          year: YEARS.includes(year) ? year : 1,
+          year,
           credits: Number(cells[idx["créditos"]] || 0) || 1,
           category: (cells[idx["categorías"]] || "").trim(),
           shared: (cells[idx.compartido] || "").trim(),
